@@ -3,7 +3,12 @@
 # SlipLord
 Simple Discord bot that alerts when you go live on Twitch and that shows up a roles selector, so the members can add roles to their profiles by themselves without opening roles management to everyone.\
 \
-*⚠️ : All discord messages are hardcoded in French for now*
+*⚠️ : All discord messages are hardcoded in French for now*\
+\
+Here is an example of what the bot sends when you go live and when you enable the roles manager:\
+<br />
+![image](https://user-images.githubusercontent.com/721001/142634244-cbce6d70-4fde-409f-81b1-febf684f3376.png)
+
 <br />
 <br />
 <br />
