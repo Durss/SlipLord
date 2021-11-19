@@ -89,7 +89,6 @@ export default class DiscordController extends EventDispatcher {
 				//user closed his/her stream, replace the stream picture by the offline one
 				let res = await TwitchUtils.loadChannelsInfo(null, [uid]);
 				let userInfo:TwitchUserInfos = (await res.json()).data[0];
-				// editedMessage.embeds[0].setImage(userInfo.offline_image_url.replace("{width}", "1080").replace("{height}", "600"));
 
 				let card = this.buildLiveCard(this.lastStreamInfos[userInfo.id], userInfo, false, true);
 				await editedMessage.edit({embeds:[card]});
@@ -333,6 +332,7 @@ Configure un channel comme destination du message de sélection de rôles
 		card.setURL(`https://twitch.tv/${infos.user_login}`);
 		card.setThumbnail(userInfo.profile_image_url);
 		card.setImage(infos.thumbnail_url+"?t="+Date.now());
+		card.setAuthor("🔴 "+infos.user_name+" est en live !", userInfo.profile_image_url);
 		card.addFields(
 			{ name: 'Catégorie', value: infos.game_name, inline: false },
 		);
@@ -341,7 +341,6 @@ Configure un channel comme destination du message de sélection de rôles
 			let uptime:string = Utils.formatDuration(ellapsed);
 			if(!this.maxViewersCount[userInfo.id]) this.maxViewersCount[userInfo.id] = 0;
 			this.maxViewersCount[userInfo.id] = Math.max(this.maxViewersCount[userInfo.id], infos.viewer_count);
-			card.setAuthor(infos.user_name+" est en live !", userInfo.profile_image_url);
 			card.addFields(
 				{ name: 'Viewers', value: infos.viewer_count.toString(), inline: true },
 				{ name: 'Uptime', value: uptime, inline: true },
