@@ -8,8 +8,9 @@ Simple Discord bot that alerts when you go live on Twitch and that shows up a ro
 
 # Table of content
 * [Project setup and config](#project-setup-and-config) 
-* [Add bot to discord's channels]
-* [Project dev/build](#project-devbuild) (#add-bot-to-discords-channels) 
+* [Add bot to discord's channels](#add-bot-to-discords-channels) 
+* [Roles reactions configuration](#roles-reactions) 
+* [Project dev/build](#project-devbuild) 
   * [Start all for developpement](#start-all-for-developpement)
   * [Compile all for production](#compile-all-for-production)
 * [Starting Services](#starting-services) 
