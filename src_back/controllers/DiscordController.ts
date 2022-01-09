@@ -386,7 +386,7 @@ Creates a poll with pre-configured selectable emojis
 	private async sendRolesSelector():Promise<void> {
 		let guild:Discord.Guild = this.client.guilds.cache.entries().next().value[1];
 		let roles = guild.roles.cache;
-		let emojiList = Config.DISCORDBOT_ROLES_EMOJIS.split(" ");
+		let emojiList = Config.DISCORDBOT_REACTION_EMOJIS.split(" ");
 		let reactionEmojis:string[] = [];
 		let message = "Pour t'attribuer un rôle clic sur la réaction correspondante en réponse à ce message !\n";
 		let emojiToRole:{[key:string]:{id:string,name:string}} = {};
@@ -476,7 +476,7 @@ Creates a poll with pre-configured selectable emojis
 	 * @param options poll's options
 	 */
 	private async createPoll(title:string, options:string[], message:Discord.Message):Promise<void> {
-		let emojis = Config.DISCORDBOT_ROLES_EMOJIS.split(" ").splice(0, options.length);
+		let emojis = Config.DISCORDBOT_REACTION_EMOJIS.split(" ").splice(0, options.length);
 		options = options.map((option, index) => emojis[index] + " : "+ option );
 
 		let messagesCount = Math.ceil(options.length/this.MAX_REACTIONS);

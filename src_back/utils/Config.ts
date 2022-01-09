@@ -24,7 +24,7 @@ export default class Config {
 	public static get NGROK_AUTH_TOKEN():string { return this.getData("NGROK_AUTH_TOKEN"); }
 	
 	public static get DISCORDBOT_TOKEN(): string { return this.getData("DISCORDBOT_TOKEN"); }
-	public static get DISCORDBOT_ROLES_EMOJIS(): string { return this.getData("DISCORDBOT_ROLES_EMOJIS"); }
+	public static get DISCORDBOT_REACTION_EMOJIS(): string { return this.getData("DISCORDBOT_REACTION_EMOJIS"); }
 	
 
 	public static get envName(): string {

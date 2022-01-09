@@ -92,7 +92,7 @@ Create a `configs.json` file at the root of the project and add this content :\
 	"TWITCH_APP_SCOPES":"",
 
 	"DISCORDBOT_TOKEN":"",
-	"DISCORDBOT_ROLES_EMOJIS":"\u0030\u20E3 \u0031\u20E3 \u0032\u20E3 \u0033\u20E3 \u0034\u20E3 \u0035\u20E3 \u0036\u20E3 \u0037\u20E3 \u0038\u20E3 \u0039\u20E3 \ud83c\udde6 \ud83c\udde7 \ud83c\udde8 \ud83c\udde9 \ud83c\uddea \ud83c\uddeb \ud83c\uddec \ud83c\udded \ud83c\uddee \ud83c\uddef \ud83c\uddf0 \ud83c\uddf1 \ud83c\uddf2 \ud83c\uddf3 \ud83c\uddf4 \ud83c\uddf5 \ud83c\uddf6 \ud83c\uddf7 \ud83c\uddf8 \ud83c\uddf9 \ud83c\uddfa \ud83c\uddfb \ud83c\uddfc \ud83c\uddfd \ud83c\uddfe \ud83c\uddff ❤️ 🧡 💛 💚 💙 💜 🤎 🟥 🟧 🟨 🟩 🟦 🟪 🟫 🔴 🟠 🟡 🟢 🔵 🟣 🟤"
+	"DISCORDBOT_REACTION_EMOJIS":"\u0030\u20E3 \u0031\u20E3 \u0032\u20E3 \u0033\u20E3 \u0034\u20E3 \u0035\u20E3 \u0036\u20E3 \u0037\u20E3 \u0038\u20E3 \u0039\u20E3 \ud83c\udde6 \ud83c\udde7 \ud83c\udde8 \ud83c\udde9 \ud83c\uddea \ud83c\uddeb \ud83c\uddec \ud83c\udded \ud83c\uddee \ud83c\uddef \ud83c\uddf0 \ud83c\uddf1 \ud83c\uddf2 \ud83c\uddf3 \ud83c\uddf4 \ud83c\uddf5 \ud83c\uddf6 \ud83c\uddf7 \ud83c\uddf8 \ud83c\uddf9 \ud83c\uddfa \ud83c\uddfb \ud83c\uddfc \ud83c\uddfd \ud83c\uddfe \ud83c\uddff ❤️ 🧡 💛 💚 💙 💜 🤎 🟥 🟧 🟨 🟩 🟦 🟪 🟫 🔴 🟠 🟡 🟢 🔵 🟣 🟤"
 }
 ```
 *(The emojis are number 0-9, then letters a-z, then hearts, squares and disks. You can change them but please about colorblind people !)*
@@ -140,7 +140,7 @@ Use this command to get a list of the available commands :
 The bot will associate every **`mentionable`** roles to one of the emojis specified on the `configs.json`.\
 <span style="text-decoration: underline">**IMPORTANT**</span>: make sure the `mentionable` option is enabled on the roles that have to be selectable ! Go to you server params -> `roles` -> click a role and check the *"`Allow everyone to @mention this role`"* option.
 
-If you want to customize the emojis used to select a role, update the list on `configs.json` file. See `DISCORDBOT_ROLES_EMOJIS` property. All emojis must be separated by a space.
+If you want to customize the emojis used to select a role, update the list on `configs.json` file. See `DISCORDBOT_REACTION_EMOJIS` property. All emojis must be separated by a space.
 <br />
 <br />
 <br />
