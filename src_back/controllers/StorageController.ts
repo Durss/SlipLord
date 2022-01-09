@@ -15,7 +15,7 @@ export class StorageController {
 	public static LIVE_CHANNEL:string = "LIVE_CHANNEL";
 	public static ROLES_CHANNEL:string = "ROLES_CHANNEL";
 	public static ROLES_EMOJIS:string = "ROLES_EMOJIS";
-	public static ROLES_SELECTOR_MESSAGE:string = "ROLES_SELECTOR_MESSAGE";
+	public static ROLES_SELECTOR_MESSAGES:string = "ROLES_SELECTOR_MESSAGES";
 	
 	constructor() {
 		if(!fs.existsSync(StorageController.cachepath)) {

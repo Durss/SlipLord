@@ -9,6 +9,7 @@ Simple Discord bot that alerts when you go live on Twitch and that shows up a ro
 <br />
 
 # Table of content
+* [Available Features](#features) 
 * [Project setup and config](#project-setup-and-config) 
 * [Add bot to discord's channels](#add-bot-to-discords-channels) 
 * [Roles reactions configuration](#roles-reactions) 
@@ -17,6 +18,40 @@ Simple Discord bot that alerts when you go live on Twitch and that shows up a ro
   * [Compile all for production](#compile-all-for-production)
 * [Starting Services](#starting-services) 
 * [Start on boot](#start-on-boot) 
+<br />
+<br />
+<br />
+
+# Available Features
+The `{prefix}` value on the examples is the `BOT_NAME` configured on `configs.json`. *(See [Project setup and config](#project-setup-and-config))*
+
+## Live alerts
+Warn your users when you go live on Twitch.\
+To enable this feature use the following command on the channel you want to send alerts to :\
+```
+!{prefix}-live
+```
+
+\
+**Roles selector** : Allow your members to self attribute roles by adding reaction to a message.\
+To enable this feature use the following command on the channel you want to send role selector to :\
+```
+!{prefix}-roles
+```
+\
+**Poll shorcut** : Quickly create a poll message with pre-selected corresponding reactions to avoid having doing it mannually.
+Example :
+```
+!{prefix}-poll First line is the title of the poll
+First poll option
+Second poll option
+Third poll option
+...
+Last poll option
+```
+The first line will be the poll's title.
+Add one line per voting option bellow.
+This will automatically attribute an emote to every voting option and add corresponding reactions to the message.
 <br />
 <br />
 <br />
@@ -43,9 +78,10 @@ Create a `configs.json` file at the root of the project and add this content :\
 	"TWITCH_APP_SCOPES":"",
 
 	"DISCORDBOT_TOKEN":"",
-	"DISCORDBOT_ROLES_EMOJIS":"❤️ 🧡 💛 💚 💙 💜 🤎 🟥 🟧 🟨 🟩 🟦 🟪 🟫 🔴 🟠 🟡 🟢 🔵 🟣 🟤"
+	"DISCORDBOT_ROLES_EMOJIS":"\u0030\u20E3 \u0031\u20E3 \u0032\u20E3 \u0033\u20E3 \u0034\u20E3 \u0035\u20E3 \u0036\u20E3 \u0037\u20E3 \u0038\u20E3 \u0039\u20E3 \ud83c\udde6 \ud83c\udde7 \ud83c\udde8 \ud83c\udde9 \ud83c\uddea \ud83c\uddeb \ud83c\uddec \ud83c\udded \ud83c\uddee \ud83c\uddef \ud83c\uddf0 \ud83c\uddf1 \ud83c\uddf2 \ud83c\uddf3 \ud83c\uddf4 \ud83c\uddf5 \ud83c\uddf6 \ud83c\uddf7 \ud83c\uddf8 \ud83c\uddf9 \ud83c\uddfa \ud83c\uddfb \ud83c\uddfc \ud83c\uddfd \ud83c\uddfe \ud83c\uddff ❤️ 🧡 💛 💚 💙 💜 🤎 🟥 🟧 🟨 🟩 🟦 🟪 🟫 🔴 🟠 🟡 🟢 🔵 🟣 🟤"
 }
 ```
+*(The emojis are number 0-9, then letters a-z, then hearts, squares and disks. You can change them but please about colorblind people !)*
 
 Set the name of your bot on the **BOT_NAME** field. The lowercased version of this value will be the prefix for all bot's commands.\
 \
@@ -87,11 +123,10 @@ Use this command to get a list of the available commands :
 <br />
 
 # Roles reactions
-By default the bot will associate every **`mentionable`** roles to one of these emojis :
-```
-❤️ 🧡 💛 💚 💙 💜 🤎 🟥 🟧 🟨 🟩 🟦 🟪 🟫 🔴 🟠 🟡 🟢 🔵 🟣 🟤
-```
-If you have more than 21 `mentionable` roles on your discord you will want to add emojis to this list on the **DISCORDBOT_ROLES_EMOJIS** field of the `configs.json` file. All emojis must be separated by a space.
+The bot will associate every **`mentionable`** roles to one of the emojis specified on the `configs.json`.\
+<span style="text-decoration: underline">**IMPORTANT**</span>: make sure the `mentionable` option is enabled on the roles that have to be selectable ! Go to you server params -> `roles` -> click a role and check the *"`Allow everyone to @mention this role`"* option.
+
+If you want to customize the emojis used to select a role, update the list on `configs.json` file. See `DISCORDBOT_ROLES_EMOJIS` property. All emojis must be separated by a space.
 <br />
 <br />
 <br />

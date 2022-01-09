@@ -16,6 +16,7 @@ export default class DiscordController extends EventDispatcher {
 	private maxViewersCount:{[key:string]:number} = {};
 	private lastStreamInfos:{[key:string]:TwitchStreamInfos} = {};
 	private BOT_TOKEN:string = Config.DISCORDBOT_TOKEN;
+	private MAX_REACTIONS:number = 20;//maximum reactions per message allowed by discord
 	
 	
 	constructor() {
@@ -154,7 +155,7 @@ export default class DiscordController extends EventDispatcher {
 		// console.log("Message received : ", message.author.bot, message.channel.type, message.content);
 		
 		if (message.author.bot) return;
-		if (message.channel.type == "DM") return
+		if (message.channel.type == "DM") return;
 		
 		if(message.content.indexOf("!") == 0) this.parseCommand(message);
 	}
@@ -163,14 +164,14 @@ export default class DiscordController extends EventDispatcher {
 	 * Called when someone uses a reaction on a message
 	 */
 	private async onAddReaction(reaction:Discord.MessageReaction):Promise<void> {
-		let messageID = StorageController.getData(StorageController.ROLES_SELECTOR_MESSAGE);
-		if(reaction.message.id != messageID) return;
+		let messageIDs = StorageController.getData(StorageController.ROLES_SELECTOR_MESSAGES);
+		if(messageIDs.indexOf(reaction.message.id) == -1) return;
 
 		let authorId = reaction.message.author.id;
 		let users = reaction.users.cache.entries();
 		let userId:string;
-		let roles:{[key:string]:string} = StorageController.getData(StorageController.ROLES_EMOJIS);
-		let roleId = roles[reaction.emoji.name];
+		let roles:{[key:string]:{id:string, name:string}} = StorageController.getData(StorageController.ROLES_EMOJIS);
+		let roleId = roles[reaction.emoji.name].id;
 
 		//Get channels IDs in which send alerts
 		let channelID = StorageController.getData(StorageController.ROLES_CHANNEL);
@@ -193,11 +194,16 @@ export default class DiscordController extends EventDispatcher {
 								user.roles.remove(role.id);
 							}
 						});
-						answer = await channel.send(`<@${userId}>, tous tes rôles ont bien été retirés.`);
+						answer = await channel.send(`<@${userId}>, tous tes rôles t'ont bien été retirés.`);
 					}else{
 						let role = await reaction.message.guild.roles.fetch(roleId);
-						answer = await channel.send(`<@${userId}>, le role **${role.name}** t'a bien été attribué !`);
-						user.roles.add(roleId);
+						if(user.roles.cache.has(role.id)) {
+							answer = await channel.send(`:x: <@${userId}>, le rôle **${role.name}** t'a bien été retiré !`);
+							user.roles.remove(roleId);
+						}else{
+							answer = await channel.send(`:white_check_mark: <@${userId}>, le rôle **${role.name}** t'a bien été attribué !`);
+							user.roles.add(roleId);
+						}
 						
 					}
 					reaction.users.remove(userId);
@@ -241,13 +247,14 @@ export default class DiscordController extends EventDispatcher {
 	private async parseCommand(message:Discord.Message):Promise<void> {
 		let isAdmin = message.member.permissions.has("ADMINISTRATOR");
 		
-		let txt = message.content.substr(1, message.content.length);
+		let txt = message.content.substring(1);
 		let chunks = txt.split(/\s/gi);
 		let	cmd = chunks[0].toLowerCase();
 		let prefix = Config.BOT_NAME.toLowerCase();
 		
 		if(cmd.indexOf(prefix) != 0) return;
 		cmd = cmd.replace(prefix+"-", "");
+
 
 		switch(cmd) {
 			case "help":
@@ -257,6 +264,14 @@ Configure un channel comme destination des alertes de live
 
 !${prefix}-roles
 Configure un channel comme destination du message de sélection de rôles
+\`\`\`
+
+!${prefix}-poll <question>
+<answer 1>
+<answer 2>
+...
+<answer n>
+Creates a poll with pre-configured selectable emojis
 \`\`\`
 `;
 			message.reply(str);
@@ -284,9 +299,7 @@ Configure un channel comme destination du message de sélection de rôles
 
 			case "roles":
 				if(isAdmin) {
-					let channelName = (<any>message.channel).name;
 					StorageController.saveData(StorageController.ROLES_CHANNEL, message.channel.id);
-					// message.reply("Le bot de gestion de rôles a bien été configuré sur le channel #"+channelName);
 					this.sendRolesSelector();
 				}else{
 					message.reply("Seul un Administrateur peut ajouter le bot à un channel");
@@ -301,6 +314,12 @@ Configure un channel comme destination du message de sélection de rôles
 				}else{
 					message.reply("Seul un Administrateur peut ajouter le bot à un channel");
 				}
+				break;
+
+			case "poll":
+				let options:string[] = txt.replace(prefix+"-poll", "").split(/\r|\n/gi);
+				let title = options.splice(0,1)[0];
+				this.createPoll(title, options, message);
 				break;
 
 		}
@@ -370,55 +389,113 @@ Configure un channel comme destination du message de sélection de rôles
 		let emojiList = Config.DISCORDBOT_ROLES_EMOJIS.split(" ");
 		let reactionEmojis:string[] = [];
 		let message = "Pour t'attribuer un rôle clic sur la réaction correspondante en réponse à ce message !\n";
-		let emojiToRole = {};
+		let emojiToRole:{[key:string]:{id:string,name:string}} = {};
 
+
+		let index = 0;
 		roles.forEach(r => {
 			if(!r.mentionable) return;
 			let e = emojiList.shift();
-			emojiToRole[e] = r.id;
+			emojiToRole[e] = {id:r.id, name:r.name};
 			reactionEmojis.push(e);
-			message += e + " - " + r.name + "\n";
 		});
-		message +=  "🗑️ - retirer tous les rôles";
-		emojiToRole["🗑️"] = "DELETE_ALL";
-		StorageController.saveData(StorageController.ROLES_EMOJIS, emojiToRole);
+		emojiToRole["🗑️"] = {id:"DELETE_ALL", name:"Me supprimer tous les rôles"};
+		reactionEmojis.push("🗑️");
+		let messagesCount = Math.ceil(reactionEmojis.length/this.MAX_REACTIONS);
 
+		StorageController.saveData(StorageController.ROLES_EMOJIS, emojiToRole);
 		//Get channels IDs in which send alerts
 		let channelID = StorageController.getData(StorageController.ROLES_CHANNEL);
+		let messageIDs = [];
 		if(channelID) {
 			//Get actual channel's reference
 			let channel = this.client.channels.cache.get(channelID) as Discord.TextChannel;
+			const previousMessageIDs:string[] = StorageController.getData(StorageController.ROLES_SELECTOR_MESSAGES)?.split(",");
 
-			const previousMessageID = StorageController.getData(StorageController.ROLES_SELECTOR_MESSAGE);
-			let discordMessage:Discord.Message;
+			//If there are more messages than actually necessary, clean them up.
+			//This can happen when deleting roles from discord.
+			if(previousMessageIDs && previousMessageIDs.length > messagesCount) {
+				console.log(previousMessageIDs.length +" VS "+ messagesCount);
+				for (let i = messagesCount; i < previousMessageIDs.length; i++) {
+					try {
+						let m = await channel.messages.fetch(previousMessageIDs[i]);
+						await m.delete();
+					}catch(error) {}
+				}
+			}
 			
-			if(previousMessageID) {
-				//Delete previous message if any
-				try {
-					let messageToEdit = await channel.messages.fetch(previousMessageID);
-					if(messageToEdit) {
-						discordMessage = await messageToEdit.edit(message);
+			//Create as much messages as necessary depending on the number of roles VS
+			//the maximum reaction count allowed by discord
+			do {
+				let discordMessage:Discord.Message;
+				//Define emojis and text message
+				let emojis = reactionEmojis.splice(0, this.MAX_REACTIONS);
+				emojis.forEach(e => {
+					let role = emojiToRole[e];
+					message += e + " - " + role.name + "\n";
+				});
+				
+				if(previousMessageIDs) {
+					//Edit previous message if any
+					try {
+						let messageToEdit = await channel.messages.fetch(previousMessageIDs[index]);
+						if(messageToEdit) {
+							discordMessage = await messageToEdit.edit(message);
+							await discordMessage.reactions.removeAll();
+						}
+					}catch(error) {
+						// Logger.error("Roles message not found")
+						discordMessage = null;
 					}
-				}catch(error) {
-					Logger.error("Roles message not found, delete its reference")
-					//Message does not exists anymore, remove its reference from storage
-					StorageController.saveData(StorageController.ROLES_SELECTOR_MESSAGE, null);
 				}
-			}
-			if(!discordMessage){
-				discordMessage = await channel.send(message);
-			}
-			StorageController.saveData(StorageController.ROLES_SELECTOR_MESSAGE, discordMessage.id);
-			reactionEmojis.forEach(async v => {
-				try {
-					await discordMessage.react(v);
-				}catch(error) {
-					console.log("Failed ", v);
+				//If no previous message, create a new one
+				if(!discordMessage){
+					discordMessage = await channel.send(message);
 				}
-			});
-			await discordMessage.react("🗑️");
+
+				//Add reactions to the message
+				emojis.forEach(async v => {
+					try {
+						await discordMessage.react(v);
+					}catch(error) {
+						console.log("Failed ", v);
+					}
+				});
+				index ++;
+				message = "";
+				messageIDs.push(discordMessage.id);
+			}while(reactionEmojis.length > 0);
+			StorageController.saveData(StorageController.ROLES_SELECTOR_MESSAGES, messageIDs.join(","));
 		}
 		//*/
 	}
 
+	/**
+	 * Creates a poll
+	 * @param title poll's title
+	 * @param options poll's options
+	 */
+	private async createPoll(title:string, options:string[], message:Discord.Message):Promise<void> {
+		let emojis = Config.DISCORDBOT_ROLES_EMOJIS.split(" ").splice(0, options.length);
+		options = options.map((option, index) => emojis[index] + " : "+ option );
+
+		let messagesCount = Math.ceil(options.length/this.MAX_REACTIONS);
+		let index = 0;
+		do {
+			let msg = options.splice(0, this.MAX_REACTIONS).join("\n");
+			let t = title;
+			let e = emojis.splice(0, this.MAX_REACTIONS);
+			if(messagesCount > 1) t += " *("+(index+1)+"/"+messagesCount+")*";
+			let discordMessage = await message.channel.send(t+"\n"+msg);
+
+			e.forEach(async v => {
+				try {
+					await discordMessage.react(v);
+				}catch(error) {
+					console.log("Failed '"+v+"'");
+				}
+			});
+			index ++;
+		}while(options.length > 0);
+	}
 }
