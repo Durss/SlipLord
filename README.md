@@ -111,8 +111,6 @@ Set your twitch login on **TWITCH_LOGIN** field.\
 \
 Set your twitch user ID on **TWITCH_USER_ID** field.\
 \
-Set your twitch login on **TWITCH_LOGIN** field.\
-\
 Create a discord app and bot [here](https://discord.com/developers/applications), and fill the **DISCORDBOT_TOKEN** with the bot's tokken.
 <br />
 <br />
