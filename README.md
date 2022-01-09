@@ -76,7 +76,7 @@ Install all the dependencies with this command:
 npm install
 ```
 
-Create a `configs.json` file at the root of the project and add this content :\
+Create a `configs.json` file at the root of the project and add this content :
 ```json
 {
 	"BOT_NAME":"SlipLord",
@@ -95,7 +95,7 @@ Create a `configs.json` file at the root of the project and add this content :\
 	"DISCORDBOT_REACTION_EMOJIS":"\u0030\u20E3 \u0031\u20E3 \u0032\u20E3 \u0033\u20E3 \u0034\u20E3 \u0035\u20E3 \u0036\u20E3 \u0037\u20E3 \u0038\u20E3 \u0039\u20E3 \ud83c\udde6 \ud83c\udde7 \ud83c\udde8 \ud83c\udde9 \ud83c\uddea \ud83c\uddeb \ud83c\uddec \ud83c\udded \ud83c\uddee \ud83c\uddef \ud83c\uddf0 \ud83c\uddf1 \ud83c\uddf2 \ud83c\uddf3 \ud83c\uddf4 \ud83c\uddf5 \ud83c\uddf6 \ud83c\uddf7 \ud83c\uddf8 \ud83c\uddf9 \ud83c\uddfa \ud83c\uddfb \ud83c\uddfc \ud83c\uddfd \ud83c\uddfe \ud83c\uddff ❤️ 🧡 💛 💚 💙 💜 🤎 🟥 🟧 🟨 🟩 🟦 🟪 🟫 🔴 🟠 🟡 🟢 🔵 🟣 🟤"
 }
 ```
-*(The emojis are number 0-9, then letters a-z, then hearts, squares and disks. You can change them but please about colorblind people !)*
+*(The emojis are number 0-9, then letters a-z, then hearts, squares and disks. You can change them but please think about colorblind people !)*
 
 Set the name of your bot on the **BOT_NAME** field. The lowercased version of this value will be the prefix for all bot's commands.\
 \
@@ -111,8 +111,6 @@ Set your twitch login on **TWITCH_LOGIN** field.\
 \
 Set your twitch user ID on **TWITCH_USER_ID** field.\
 \
-Set your twitch login on **TWITCH_LOGIN** field.\
-\
 Create a discord app and bot [here](https://discord.com/developers/applications), and fill the **DISCORDBOT_TOKEN** with the bot's tokken.
 <br />
 <br />
@@ -121,17 +119,17 @@ Create a discord app and bot [here](https://discord.com/developers/applications)
 # Add bot to discord's channels
 Use this command on a discord channel to configure alerts :
 ```
-!sliplord-live
+!{prefix}-live
 ```
 Use this command on a discord channel to configure roles selector :
 ```
-!sliplord-roles
+!{prefix}-roles
 ```
 Use this command to get a list of the available commands :
 ```
-!sliplord-help
+!{prefix}-help
 ```
-⚠️ : the `sliplord` prefix might different depending on what you set as the **BOT_NAME** in the `configs.json` file.
+⚠️ : the `{prefix}` prefix value is the lowercased **BOT_NAME** value configure in the `configs.json` file.
 <br />
 <br />
 <br />
