@@ -15,6 +15,9 @@ Here is an example of what the bot sends when you go live and when you enable th
 
 # Table of content
 * [Available Features](#features) 
+  * [Live alerts](#live-alerts)
+  * [Roles selector](#roles-selector)
+  * [Poll shortcut](#poll-shortcut)
 * [Project setup and config](#project-setup-and-config) 
 * [Add bot to discord's channels](#add-bot-to-discords-channels) 
 * [Roles reactions configuration](#roles-reactions) 
@@ -36,27 +39,32 @@ To enable this feature use the following command on the channel you want to send
 ```
 !{prefix}-live
 ```
+![image](https://user-images.githubusercontent.com/721001/148676359-e89ed253-4034-4be0-90c7-4143892802c1.png)
 
-\
-**Roles selector** : Allow your members to self attribute roles by adding reaction to a message.\
+## Roles selector
+Allow your members to self attribute roles by adding reaction to a message.\
 To enable this feature use the following command on the channel you want to send role selector to :\
 ```
 !{prefix}-roles
 ```
-\
-**Poll shorcut** : Quickly create a poll message with pre-selected corresponding reactions to avoid having doing it mannually.
+![image](https://user-images.githubusercontent.com/721001/148676376-d458a7f9-b3cf-40b4-a52c-90970cf31015.png)
+
+## Poll shortcut
+Quickly create a poll message with pre-selected corresponding reactions to avoid having doing it mannually.
 Example :
 ```
-!{prefix}-poll First line is the title of the poll
-First poll option
-Second poll option
-Third poll option
+!{prefix}-poll This is a poll example
+Vote for this !
+No, Vote for this !
+Well, actually, you should vote for this.
 ...
 Last poll option
 ```
 The first line will be the poll's title.
 Add one line per voting option bellow.
-This will automatically attribute an emote to every voting option and add corresponding reactions to the message.
+This will automatically attribute an emote to every voting option and add corresponding reactions to the message.\
+![image](https://user-images.githubusercontent.com/721001/148676525-9af021e1-d9df-4b31-8314-39d9d1ce208b.png)
+
 <br />
 <br />
 <br />
