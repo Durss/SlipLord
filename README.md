@@ -31,7 +31,8 @@ Here is an example of what the bot sends when you go live and when you enable th
 <br />
 
 # Available Features
-The `{prefix}` value on the examples is the `BOT_NAME` configured on `configs.json`. *(See [Project setup and config](#project-setup-and-config))*
+The `{prefix}` value on the 
+s is the `BOT_NAME` configured on `configs.json`. *(See [Project setup and config](#project-setup-and-config))*
 
 ## Live alerts
 Warn your users when you go live on Twitch.\
@@ -50,7 +51,7 @@ To enable this feature use the following command on the channel you want to send
 ![image](https://user-images.githubusercontent.com/721001/148676376-d458a7f9-b3cf-40b4-a52c-90970cf31015.png)
 
 ## Poll shortcut
-Quickly create a poll message with pre-selected corresponding reactions to avoid having doing it mannually.
+Quickly create a poll message with pre-selected corresponding reactions to avoid having doing it mannually.\
 Example :
 ```
 !{prefix}-poll This is a poll example
