@@ -119,17 +119,17 @@ Create a discord app and bot [here](https://discord.com/developers/applications)
 # Add bot to discord's channels
 Use this command on a discord channel to configure alerts :
 ```
-!sliplord-live
+!{prefix}-live
 ```
 Use this command on a discord channel to configure roles selector :
 ```
-!sliplord-roles
+!{prefix}-roles
 ```
 Use this command to get a list of the available commands :
 ```
-!sliplord-help
+!{prefix}-help
 ```
-⚠️ : the `sliplord` prefix might different depending on what you set as the **BOT_NAME** in the `configs.json` file.
+⚠️ : the `{prefix}` prefix value is the lowercased **BOT_NAME** value configure in the `configs.json` file.
 <br />
 <br />
 <br />
