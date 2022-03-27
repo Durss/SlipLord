@@ -105,22 +105,28 @@ export default class DiscordController extends EventDispatcher {
 			//Get actual channel's reference
 			let channel = this.client.channels.cache.get(channelID) as Discord.TextChannel;
 			if(channel) {
-				//Get twitch channel's infos
-				let res = await TwitchUtils.loadChannelsInfo(null, [uid]);
-				let userInfo:TwitchUserInfos = (await res.json()).data[0];
-				let card = this.buildLiveCard(streamDetails, userInfo, editedMessage!=null);
-				let message:Discord.Message;
-				if(editedMessage) {
-					//Edit existing message
-					message = editedMessage;
-					message = await message.edit({embeds:[card]});
-				}else{
-					message = await channel.send({embeds:[card]});
+				try {
+
+					//Get twitch channel's infos
+					let res = await TwitchUtils.loadChannelsInfo(null, [uid]);
+					let userInfo:TwitchUserInfos = (await res.json()).data[0];
+					let card = this.buildLiveCard(streamDetails, userInfo, editedMessage!=null);
+					let message:Discord.Message;
+					if(editedMessage) {
+						//Edit existing message
+						message = editedMessage;
+						message = await message.edit({embeds:[card]});
+					}else{
+						message = await channel.send({embeds:[card]});
+					}
+					//Schedule message update 1min later
+					setTimeout(_=> {
+						this.alertLiveChannel(uid, 0, message);
+					}, 1 * 60 * 1000);
+				}catch(error) {
+					Logger.error("Error while sending message to discord channel " + channelID);
+					console.log(error);
 				}
-				//Schedule message update 1min later
-				setTimeout(_=> {
-					this.alertLiveChannel(uid, 0, message);
-				}, 1 * 60 * 1000);
 			}else{
 				Logger.error("Channel not found");
 			}
