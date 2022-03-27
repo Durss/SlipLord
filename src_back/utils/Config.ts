@@ -109,7 +109,7 @@ export default class Config {
 		}
 
 		//Get the data from hashmap
-		if (map[this._ENV_NAME]) return map[this._ENV_NAME];
+		if (map[this._ENV_NAME] != undefined) return map[this._ENV_NAME];
 		return map[Object.keys(map)[0]];
 	}
 }
