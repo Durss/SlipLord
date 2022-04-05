@@ -80,6 +80,7 @@ Create a `configs.json` file at the root of the project and add this content :
 ```json
 {
 	"BOT_NAME":"SlipLord",
+	"LANGUAGE":"en",
 
 	"TWITCH_LOGIN":"",
 	"TWITCH_USER_ID":"",
@@ -102,6 +103,8 @@ Set the name of your bot on the **BOT_NAME** field. The lowercased version of th
 Create a twitch app [here](https://dev.twitch.tv/console/apps), and fill the **TWITCH_APP_CLIENT_ID** and **TWITCH_APP_CLIENT_SECRET** values.\
 \
 You can leave the **TWITCH_APP_SCOPES** empty.\
+\
+The **LANGUAGE** field only supports "en" or "fr" values. Check the file `labels.json` for available values.\
 \
 Write anything you want on the **TWITCH_EVENTSUB_SECRET**. Must be between 10 and 100 chars.\
 \

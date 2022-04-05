@@ -41,10 +41,10 @@ export default class Label {
 	 * Gets a label by its path on the file "labels.json"
 	 * 
 	 * @param path 
-	 * @param replace replaces all "{id}" occurrences by the "text" value
+	 * @param replacements replaces all "{id}" occurrences by the "text" value
 	 * @returns 
 	 */
-	public static get(path:string, replace?:{id:string, text:string}):string {
+	public static get(path:string, replacements?:{id:string, value:string}[]):string {
 		const chunks = path.split(".");
 		let result;
 		try {
@@ -56,8 +56,13 @@ export default class Label {
 			// console.log(error);
 			return "Label not found at path: "+this.locale+"."+path;
 		}
-		if(replace?.id&& replace?.text) {
-			result = result.replace(new RegExp("{"+replace.id+"}", "gi"), replace.text);
+		if(replacements && replacements.length > 0) {
+			for (let i = 0; i < replacements.length; i++) {
+				const replacement = replacements[i];
+				if(replacement?.id && replacement?.value) {
+					result = result.replace(new RegExp("{"+replacement.id+"}", "gi"), replacement.value);
+				}
+			}
 		}
 		return result;
 	}

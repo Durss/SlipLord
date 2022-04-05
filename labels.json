@@ -13,9 +13,19 @@
 		},
 		"roles": {
 			"intro":"To give yourself a role click on the corresponding reaction:\n",
+			"add_ok":":white_check_mark: <@{userId}>, you now have the role **{role}**!",
 			"del_all":"Remove all roles",
+			"del_all_ok":"<@{userId}>, all your roles have been reset.",
+			"del_one_ok":":x: <@{userId}>, the role **{role}** has been removed successfully.",
 			"del_ok":"The roles manager has been removed from the channel #{channel}",
 			"ko":"Only an administrator can use this command"
+		},
+		"twitch_live":{
+			"online":"🔴 {user} is live!",
+			"offline":"{user} was live.",
+			"category":"Category",
+			"stream_duration":"Stream duration",
+			"viewers_max":"Viewers max"
 		}
 	},
 	"fr":{
@@ -32,9 +42,19 @@
 		},
 		"roles": {
 			"intro":"Pour t'attribuer un rôle clic sur la réaction correspondante :\n",
+			"add_ok":":white_check_mark: <@{userId}>, le rôle **{role}** t'a bien été attribué !",
 			"del_all":"Me supprimer tous les rôles",
+			"del_all_ok":"<@{userId}>, tous tes rôles t'ont bien été retirés.",
+			"del_one_ok":":x: <@{userId}>, le rôle **{role}** t'a bien été retiré !",
 			"del_ok":"Le bot de gestion de rôles a bien supprimé du channel #{channel}",
 			"ko":"Seul un Administrateur peut utiliser cette commande"
+		},
+		"twitch_live":{
+			"online":"🔴 {user} est en live !",
+			"offline":"{user} était en live.",
+			"category":"Catégorie",
+			"stream_duration":"Durée du stream",
+			"viewers_max":"Viewers max"
 		}
 	}
 }

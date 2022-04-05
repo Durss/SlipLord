@@ -203,14 +203,14 @@ export default class DiscordController extends EventDispatcher {
 								user.roles.remove(role.id);
 							}
 						});
-						answer = await channel.send(`<@${userId}>, tous tes rôles t'ont bien été retirés.`);
+						answer = await channel.send(Label.get("roles.del_all_ok", [{id:"userId", value:userId}]));
 					}else{
 						let role = await reaction.message.guild.roles.fetch(roleId);
 						if(user.roles.cache.has(role.id)) {
-							answer = await channel.send(`:x: <@${userId}>, le rôle **${role.name}** t'a bien été retiré !`);
+							answer = await channel.send(Label.get("roles.del_one_ok", [{id:"userId", value:userId}, {id:"role", value:role.name}]));
 							user.roles.remove(roleId);
 						}else{
-							answer = await channel.send(`:white_check_mark: <@${userId}>, le rôle **${role.name}** t'a bien été attribué !`);
+							answer = await channel.send(Label.get("roles.add_ok", [{id:"userId", value:userId}, {id:"role", value:role.name}]));
 							user.roles.add(roleId);
 						}
 					}
@@ -286,7 +286,7 @@ ${Label.get("help.cmd_poll")}
 				if(isAdmin) {
 					let channelName = (<any>message.channel).name;
 					StorageController.saveData(StorageController.LIVE_CHANNEL, message.channel.id);
-					message.reply(Label.get("live.add_ok", {id:"channel", text:channelName}));
+					message.reply(Label.get("live.add_ok", [{id:"channel", value:channelName}]));
 				}else{
 					message.reply(Label.get("live.ko"));
 				}
@@ -296,7 +296,7 @@ ${Label.get("help.cmd_poll")}
 				if(isAdmin) {
 					let channelName = (<any>message.channel).name;
 					StorageController.saveData(StorageController.LIVE_CHANNEL, null);
-					message.reply(Label.get("live.del_ok", {id:"channel", text:channelName}));
+					message.reply(Label.get("live.del_ok", [{id:"channel", value:channelName}]));
 				}else{
 					message.reply(Label.get("live.ko"));
 				}
@@ -315,7 +315,7 @@ ${Label.get("help.cmd_poll")}
 				if(isAdmin) {
 					let channelName = (<any>message.channel).name;
 					StorageController.saveData(StorageController.ROLES_CHANNEL, null);
-					message.reply(Label.get("roles.del_ok", {id:"channel", text:channelName}));
+					message.reply(Label.get("roles.del_ok", [{id:"channel", value:channelName}]));
 				}else{
 					message.reply(Label.get("roles.ko"));
 				}
@@ -356,9 +356,9 @@ ${Label.get("help.cmd_poll")}
 		card.setURL(`https://twitch.tv/${infos.user_login}`);
 		card.setThumbnail(userInfo.profile_image_url);
 		card.setImage(infos.thumbnail_url+"?t="+Date.now());
-		card.setAuthor("🔴 "+infos.user_name+" est en live !", userInfo.profile_image_url);
+		card.setAuthor(Label.get("twitch_live.online", [{id:"user", value:infos.user_name}]), userInfo.profile_image_url);
 		card.addFields(
-			{ name: 'Catégorie', value: infos.game_name, inline: false },
+			{ name: Label.get("twitch_live.category"), value: infos.game_name, inline: false },
 		);
 		if(liveMode) {
 			let ellapsed = Date.now() - new Date(infos.started_at).getTime();
@@ -371,14 +371,14 @@ ${Label.get("help.cmd_poll")}
 			);
 			this.lastStreamInfos[userInfo.id] = infos;
 		}else if(offlineMode) {
-			card.setAuthor(infos.user_name+" était en live !", userInfo.profile_image_url);
+			card.setAuthor(Label.get("twitch_live.offline", [{id:"user", value:infos.user_name}]), userInfo.profile_image_url);
 			let fields:Discord.EmbedField[] = [];
 			if(this.maxViewersCount[userInfo.id]) {
-				fields.push({ name: 'Viewers max', value: this.maxViewersCount[userInfo.id].toString(), inline: true });
+				fields.push({ name: Label.get("twitch_live.viewers_max"), value: this.maxViewersCount[userInfo.id].toString(), inline: true });
 			}
 			let ellapsed = Date.now() - new Date(infos.started_at).getTime();
 			let uptime:string = Utils.formatDuration(ellapsed);
-			fields.push({ name: 'Durée du stream', value: uptime, inline: true });
+			fields.push({ name: Label.get("twitch_live.stream_duration"), value: uptime, inline: true });
 			card.addFields( fields );
 		}
 		card.setFooter(userInfo.description);
