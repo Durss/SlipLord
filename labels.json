@@ -1,0 +1,40 @@
+{
+	"en":{
+		"help":{
+			"intro":"Here are the available commands:",
+			"cmd_live":"Configure a channel to receive twitch live alerts",
+			"cmd_roles":"Configure a channel to display the roles selcor",
+			"cmd_poll":"Creates a poll with pre-configured selectable emojis"
+		},
+		"live": {
+			"add_ok":"The Twitch live alert bot has been properly configured on the channel #{channel}",
+			"del_ok":"The Twitch live alert bot has been properly removed from the channel #{channel}",
+			"ko":"Only an administrator can use this command"
+		},
+		"roles": {
+			"intro":"To give yourself a role click on the corresponding reaction:\n",
+			"del_all":"Remove all roles",
+			"del_ok":"The roles manager has been removed from the channel #{channel}",
+			"ko":"Only an administrator can use this command"
+		}
+	},
+	"fr":{
+		"help":{
+			"intro":"Voici les commandes disponibles :",
+			"cmd_live":"Configure un channel comme destination des alertes de live",
+			"cmd_roles":"Configure un channel comme destination du message de sélection de rôles",
+			"cmd_poll":"Créé un sondage avec des réactions pré-configurées"
+		},
+		"live": {
+			"add_ok":"Le bot d'alertes de live a bien été configuré sur le channel #{channel}",
+			"del_ok":"Le bot d'alertes de live a bien été supprimé du channel #{channel}",
+			"ko":"Seul un Administrateur peut utiliser cette commande"
+		},
+		"roles": {
+			"intro":"Pour t'attribuer un rôle clic sur la réaction correspondante :\n",
+			"del_all":"Me supprimer tous les rôles",
+			"del_ok":"Le bot de gestion de rôles a bien supprimé du channel #{channel}",
+			"ko":"Seul un Administrateur peut utiliser cette commande"
+		}
+	}
+}

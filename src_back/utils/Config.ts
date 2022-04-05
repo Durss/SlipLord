@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import { LogStyle } from "../utils/Logger";
+import { AvailableLocales } from "./Label";
 /**
  * Created by Durss
  */
@@ -11,6 +12,7 @@ export default class Config {
 	private static _CONFIGS_CACHE:{[key:string]:string} = null;
 	
 	public static get BOT_NAME():string { return this.getData("BOT_NAME"); 	}
+	public static get LANGUAGE():AvailableLocales { return this.getData("LANGUAGE") as AvailableLocales; 	}
 
 	public static get TWITCH_LOGIN():string { return this.getData("TWITCH_LOGIN"); 	}
 	public static get TWITCH_USER_ID():string { return this.getData("TWITCH_USER_ID"); }
@@ -20,8 +22,6 @@ export default class Config {
 	public static get PUBLIC_SECURED_URL():string { return this.getData("PUBLIC_SECURED_URL"); 	}
 	public static get TWITCH_APP_CLIENT_SECRET():string { return this.getData("TWITCH_APP_CLIENT_SECRET"); 	}
 	public static get TWITCH_APP_SCOPES():string { return this.getData("TWITCH_APP_SCOPES"); }
-	
-	public static get NGROK_AUTH_TOKEN():string { return this.getData("NGROK_AUTH_TOKEN"); }
 	
 	public static get DISCORDBOT_TOKEN(): string { return this.getData("DISCORDBOT_TOKEN"); }
 	public static get DISCORDBOT_REACTION_EMOJIS(): string { return this.getData("DISCORDBOT_REACTION_EMOJIS"); }
@@ -40,8 +40,8 @@ export default class Config {
 
 	public static get SERVER_PORT(): number {
 		return this.getEnvData({
-			dev: 3015,
-			prod: 3015,
+			dev: 3020,
+			prod: 3020,
 		});
 	}
 
@@ -63,6 +63,13 @@ export default class Config {
 		return this.getEnvData({
 			dev: "./configs.json",
 			prod: path.resolve(__dirname+"/../configs.json"),
+		});
+	}
+
+	public static get LABELS_PATH(): string {
+		return this.getEnvData({
+			dev: "./labels.json",
+			prod: path.resolve(__dirname+"/../labels.json"),
 		});
 	}
 

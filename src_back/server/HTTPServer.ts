@@ -8,6 +8,7 @@ import EventSubController from '../controllers/EventSubController';
 import { StorageController } from '../controllers/StorageController';
 import Config from '../utils/Config';
 import { Event } from '../utils/EventDispatcher';
+import Label from '../utils/Label';
 import Logger from '../utils/Logger';
 import SocketServer from "./SocketServer";
 
@@ -20,6 +21,9 @@ export default class HTTPServer {
 		if(!fs.existsSync(Config.UPLOAD_PATH)) {
 			fs.mkdirSync(Config.UPLOAD_PATH);
 		}
+
+		Label.initialize();
+		Label.setLocale(Config.LANGUAGE);
 
 		this.app = <Express>express();
 		let server = http.createServer(<any>this.app);
@@ -104,19 +108,21 @@ export default class HTTPServer {
 		this.app.get("/api", async (req, res) => {
 			res.status(200).send(JSON.stringify({success:true}));
 		});
-	
-		let eventSub = new EventSubController();
-		await eventSub.mount(this.app);
-
+		
 		let discord = new DiscordController();
-		discord.addEventListener(Event.SUB_TO_LIVE_EVENT, (event:Event) => {
-			eventSub.subToUser(event.channelId);
-		});
+		if(Config.TWITCH_USER_ID) {
+			let eventSub = new EventSubController();
+			await eventSub.mount(this.app);
+			discord.addEventListener(Event.SUB_TO_LIVE_EVENT, (event:Event) => {
+				eventSub.subToUser(event.channelId);
+			});
+			eventSub.addEventListener(Event.DISCORD_ALERT_LIVE, (event:Event) => {
+				discord.alertLiveChannel(event.channelId);
+			});
+		}
+
 		discord.mount(this.app);
 		
-		eventSub.addEventListener(Event.DISCORD_ALERT_LIVE, (event:Event) => {
-			discord.alertLiveChannel(event.channelId);
-		});
 		// let res = await TwitchUtils.loadChannelsInfo(["durssbot"]);
 		// console.log(await res.json());
 	}

@@ -2,6 +2,7 @@ import * as Discord from "discord.js";
 import { Express } from "express-serve-static-core";
 import Config from "../utils/Config";
 import { Event, EventDispatcher } from "../utils/EventDispatcher";
+import Label from "../utils/Label";
 import Logger from '../utils/Logger';
 import TwitchUtils, { TwitchStreamInfos, TwitchUserInfos } from "../utils/TwitchUtils";
 import Utils from "../utils/Utils";
@@ -35,7 +36,9 @@ export default class DiscordController extends EventDispatcher {
 	public async mount(app:Express):Promise<void> {
 		if(!this.BOT_TOKEN) return;
 		
-		this.subToUser();
+		if(Config.TWITCH_USER_ID) {
+			this.subToUser();
+		}
 		
 		this.client = new Discord.Client({ intents: [
 			Discord.Intents.FLAGS.GUILDS,
@@ -177,7 +180,7 @@ export default class DiscordController extends EventDispatcher {
 		let users = reaction.users.cache.entries();
 		let userId:string;
 		let roles:{[key:string]:{id:string, name:string}} = StorageController.getData(StorageController.ROLES_EMOJIS);
-		let roleId = roles[reaction.emoji.name].id;
+		let roleId = roles[reaction.emoji.name]?.id;
 
 		//Get channels IDs in which send alerts
 		let channelID = StorageController.getData(StorageController.ROLES_CHANNEL);
@@ -210,7 +213,6 @@ export default class DiscordController extends EventDispatcher {
 							answer = await channel.send(`:white_check_mark: <@${userId}>, le rôle **${role.name}** t'a bien été attribué !`);
 							user.roles.add(roleId);
 						}
-						
 					}
 					reaction.users.remove(userId);
 					setTimeout(async _=> {
@@ -264,20 +266,17 @@ export default class DiscordController extends EventDispatcher {
 
 		switch(cmd) {
 			case "help":
-				let str = `Voici les commandes disponibles :\`\`\`
-!${prefix}-live
-Configure un channel comme destination des alertes de live
-
-!${prefix}-roles
-Configure un channel comme destination du message de sélection de rôles
-\`\`\`
-
-!${prefix}-poll <question>
+				let str = `${Label.get("help.intro")}
+\`\`\`!${prefix}-live
+${Label.get("help.cmd_live")}\`\`\`
+\`\`\`!${prefix}-roles
+${Label.get("help.cmd_roles")}\`\`\`
+\`\`\`!${prefix}-poll <question>
 <answer 1>
 <answer 2>
 ...
 <answer n>
-Creates a poll with pre-configured selectable emojis
+${Label.get("help.cmd_poll")}
 \`\`\`
 `;
 			message.reply(str);
@@ -287,9 +286,9 @@ Creates a poll with pre-configured selectable emojis
 				if(isAdmin) {
 					let channelName = (<any>message.channel).name;
 					StorageController.saveData(StorageController.LIVE_CHANNEL, message.channel.id);
-					message.reply("Le bot d'alertes de live a bien été configuré sur le channel #"+channelName);
+					message.reply(Label.get("live.add_ok", {id:"channel", text:channelName}));
 				}else{
-					message.reply("Seul un Administrateur peut ajouter le bot à un channel");
+					message.reply(Label.get("live.ko"));
 				}
 				break;
 
@@ -297,9 +296,9 @@ Creates a poll with pre-configured selectable emojis
 				if(isAdmin) {
 					let channelName = (<any>message.channel).name;
 					StorageController.saveData(StorageController.LIVE_CHANNEL, null);
-					message.reply("Le bot d'alertes de live a bien supprimé du channel #"+channelName);
+					message.reply(Label.get("live.del_ok", {id:"channel", text:channelName}));
 				}else{
-					message.reply("Seul un Administrateur peut ajouter le bot à un channel");
+					message.reply(Label.get("live.ko"));
 				}
 				break;
 
@@ -308,7 +307,7 @@ Creates a poll with pre-configured selectable emojis
 					StorageController.saveData(StorageController.ROLES_CHANNEL, message.channel.id);
 					this.sendRolesSelector();
 				}else{
-					message.reply("Seul un Administrateur peut ajouter le bot à un channel");
+					message.reply(Label.get("roles.ko"));
 				}
 				break;
 
@@ -316,9 +315,9 @@ Creates a poll with pre-configured selectable emojis
 				if(isAdmin) {
 					let channelName = (<any>message.channel).name;
 					StorageController.saveData(StorageController.ROLES_CHANNEL, null);
-					message.reply("Le bot de gestion de rôles a bien supprimé du channel #"+channelName);
+					message.reply(Label.get("roles.del_ok", {id:"channel", text:channelName}));
 				}else{
-					message.reply("Seul un Administrateur peut ajouter le bot à un channel");
+					message.reply(Label.get("roles.ko"));
 				}
 				break;
 
@@ -394,7 +393,7 @@ Creates a poll with pre-configured selectable emojis
 		let roles = guild.roles.cache;
 		let emojiList = Config.DISCORDBOT_REACTION_EMOJIS.split(" ");
 		let reactionEmojis:string[] = [];
-		let message = "Pour t'attribuer un rôle clic sur la réaction correspondante en réponse à ce message !\n";
+		let message = Label.get("roles.intro");
 		let emojiToRole:{[key:string]:{id:string,name:string}} = {};
 
 
@@ -405,7 +404,7 @@ Creates a poll with pre-configured selectable emojis
 			emojiToRole[e] = {id:r.id, name:r.name};
 			reactionEmojis.push(e);
 		});
-		emojiToRole["🗑️"] = {id:"DELETE_ALL", name:"Me supprimer tous les rôles"};
+		emojiToRole["🗑️"] = {id:"DELETE_ALL", name:Label.get("roles.del_all")};
 		reactionEmojis.push("🗑️");
 		let messagesCount = Math.ceil(reactionEmojis.length/this.MAX_REACTIONS);
 
