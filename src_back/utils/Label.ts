@@ -7,7 +7,6 @@ import Config from "./Config";
 export default class Label {
 
 	private static labels:Locale;
-	private static locale:AvailableLocales;
 	
 	constructor() {
 	}
@@ -33,8 +32,18 @@ export default class Label {
 		this.labels = json;
 	}
 
-	public static setLocale(locale:AvailableLocales):void {
-		this.locale = locale;
+	/**
+	 * Get available locales
+	 * @returns 
+	 */
+	public static getLocales():{id:string,name:string}[] {
+		const ids = Object.keys(this.labels);
+		return ids.map((id) => {
+			return {
+				id,
+				name:this.labels[id].language
+			}
+		});
 	}
 
 	/**
@@ -44,17 +53,17 @@ export default class Label {
 	 * @param replacements replaces all "{id}" occurrences by the "text" value
 	 * @returns 
 	 */
-	public static get(path:string, replacements?:{id:string, value:string}[]):string {
+	public static get(locale:string, path:string, replacements?:{id:string, value:string}[]):string {
 		const chunks = path.split(".");
 		let result;
 		try {
-			result = this.labels[this.locale];
+			result = this.labels[locale];
 			for (let i = 0; i < chunks.length; i++) {
 				result = result[chunks[i]];
 			}
 		}catch(error) {
 			// console.log(error);
-			return "Label not found at path: "+this.locale+"."+path;
+			return "Label not found at path: "+locale+"."+path+" for locale "+locale;
 		}
 		if(replacements && replacements.length > 0) {
 			for (let i = 0; i < replacements.length; i++) {

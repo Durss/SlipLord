@@ -166,6 +166,13 @@ export default class DiscordController extends EventDispatcher {
 	 */
 	private async createCommands(guild?:Discord.Guild):Promise<void> {
 		const rest = new REST({ version: '9' }).setToken(Config.DISCORDBOT_TOKEN);
+		const langChoices = [];
+		const locales = Label.getLocales();
+		for (let i = 0; i < locales.length; i++) {
+			const l = locales[i];
+			langChoices.push([l.name, l.id]);
+		}
+		console.log(langChoices);
 		const admin = new SlashCommandBuilder()
 		.setDefaultPermission(false)
 		.setName('admin')
@@ -221,10 +228,22 @@ export default class DiscordController extends EventDispatcher {
 		)
 		.addSubcommand(subcommand =>
 			subcommand
-				.setName('twitch_live')
+				.setName('twitch_watch')
 				.setDescription('Get notified when a twitch channel goes live by sending a card on this channel')
 				.addStringOption(option => option.setRequired(true).setName('twitch_login').setDescription('The twitch login of the channel to add'))
-				);
+		)
+		.addSubcommand(subcommand =>
+			subcommand
+				.setName('twitch_unwatch')
+				.setDescription('Stop getting notified when a twitch channel goes live')
+				.addStringOption(option => option.setRequired(true).setName('twitch_login').setDescription('The twitch login of the channel to stop watching'))
+		)
+		.addSubcommand(subcommand =>
+			subcommand
+				.setName('language')
+				.setDescription('Change the bot\'s language')
+				.addStringOption(option => option.setRequired(true).setName('lang').setDescription('Language to use').addChoices(langChoices))
+		);
 				
 		const poll = new SlashCommandBuilder()
 			.setName('poll')
@@ -233,7 +252,6 @@ export default class DiscordController extends EventDispatcher {
 			.addStringOption(option => option.setRequired(true).setName('option1').setDescription('Name of the first option'))
 			.addStringOption(option => option.setRequired(true).setName('option2').setDescription('Name of the second option'))
 			.addBooleanOption(option => option.setName('anonvotes').setDescription('Should votes be anonnymous?'))
-
 			.addBooleanOption(option => option.setName('unique').setDescription('Can user vote for only one option?'))
 			.addStringOption(option => option.setName('option3').setDescription('Name of the third option'))
 			.addStringOption(option => option.setName('option4').setDescription('Name of the option 4'))
@@ -341,54 +359,115 @@ export default class DiscordController extends EventDispatcher {
 	 * @returns 
 	 */
 	private async onCommand(interaction:Discord.Interaction):Promise<void> {
-		if(!interaction.isCommand()) return;
-		
-		const cmd = interaction as Discord.CommandInteraction;
-		let action = cmd.commandName;
-		try {
-			const subCommand = cmd.options.getSubcommand();
-			if(subCommand) action += "/" + subCommand;
-		}catch(error) {}
-		
-		await interaction.deferReply();
+		const lang = this.lang(interaction.guildId);
+		let user = await interaction.guild.members.fetch(interaction.user.id);
+		if(interaction.isButton()) {
+			switch(interaction.customId){
+				case "roles_delete_all": {
+					interaction.deferReply();
+					//Delete all roles of the user
+					let roleDeleted = false;
+					const users = user.roles.cache.entries();
+					while(true) {
+						const v = users.next();
+						if(v.done) break;
+						const role = v.value[1];
+						if(role.editable && role.id != interaction.guildId) {
+							roleDeleted = true;
+							try {
+								await user.roles.remove( role.id );
+							}catch(error) {
+								Logger.error("Failed removing", role.name)
+							}
+						}
+					}
 
-		switch(action) {
-			case "admin/allow_role": {
-				this.allowCommandsTo(cmd, ApplicationCommandPermissionTypes.ROLE);
-				break;
-			}
-			case "admin/disallow_role": {
-				this.allowCommandsTo(cmd, ApplicationCommandPermissionTypes.ROLE, false);
-				break;
-			}
-			case "admin/allow_user": {
-				this.allowCommandsTo(cmd, ApplicationCommandPermissionTypes.USER);
-				break;
-			}
-			case "admin/disallow_user": {
-				this.allowCommandsTo(cmd, ApplicationCommandPermissionTypes.USER, false);
-				break;
-			}
-
-			case "admin/roles": {
-				await this.sendRolesSelector(cmd);
-				break;
-			}
-			
-			case "admin/twitch_live": {
-				this.addTwitchLiveAlertChannel();
-				break;
-			}
-			
-			case "poll": {
-				this.createPoll(cmd);
-				break;
+					//If no role has been deleted we need to wait a little
+					//before replying to after a deferReply() or Discord
+					if(!roleDeleted) await Utils.promisedTimeout(1000);
+					const m = await interaction.editReply(Label.get(lang, "roles.del_all_ok", [{id:"user", value:user.id}]));
+					await Utils.promisedTimeout(10000);
+					if(m.type == "REPLY") await m.delete();
+					break;
+				}
 			}
 		}
 
-		//Cleanup the default discord message
-		const m = await interaction.fetchReply() as Discord.Message;
-		await m.delete();
+		//If it's a menu selection
+		if(interaction.isSelectMenu()) {
+			const cmd = interaction as Discord.SelectMenuInteraction;
+			let action = cmd.customId;
+			switch(action) {
+				case "role_selector":{
+					interaction.deferUpdate();
+					for (let i = 0; i < cmd.values.length; i++) {
+						await user.roles.add( cmd.values[i] );
+					}
+					
+					//Reset selection
+					await interaction.editReply({ content: Label.get(lang, "roles.intro") });
+
+					//Confirm roles update
+					const answer = await interaction.channel.send(Label.get(lang, "roles.add_ok", [{id:"user", value:user.id}]));
+					setTimeout(async _=> {
+						//Delete confirmation
+						try {
+							await answer.delete();
+						}catch(error) {};
+					}, 10000);
+					break;
+				}
+			}
+		}
+
+		//If it's a command execution
+		if(interaction.isCommand()) {
+			await interaction.deferReply();
+			
+			const cmd = interaction as Discord.CommandInteraction;
+			let action = cmd.commandName;
+			try {
+				const subCommand = cmd.options.getSubcommand();
+				if(subCommand) action += "/" + subCommand;
+			}catch(error) {}
+			console.log(action);
+	
+			switch(action) {
+				case "admin/allow_role":
+				case "admin/disallow_role": {
+					this.allowCommandsTo(cmd, ApplicationCommandPermissionTypes.ROLE, action==="admin/allow_role");
+					break;
+				}
+				case "admin/allow_user": 
+				case "admin/disallow_user": {
+					this.allowCommandsTo(cmd, ApplicationCommandPermissionTypes.USER, action==="admin/allow_user");
+					break;
+				}
+	
+				case "admin/roles": {
+					await this.sendRolesSelector(cmd);
+					break;
+				}
+				
+				case "admin/twitch_watch": {
+					this.addTwitchLiveAlertChannel();
+					break;
+				}
+				
+				case "admin/language": {
+					StorageController.saveData(cmd.guildId, StorageController.LANGUAGE, cmd.options.get("lang").value);
+					break;
+				}
+				
+				case "poll": {
+					this.createPoll(cmd);
+					break;
+				}
+			}
+
+			const m = await interaction.fetchReply() as Discord.Message;
+			await m.delete();
+		}
 	}
 
 	private async addTwitchLiveAlertChannel():Promise<void> {
@@ -491,101 +570,6 @@ export default class DiscordController extends EventDispatcher {
 		
 		if(cmd.indexOf(prefix) != 0) return;
 		cmd = cmd.replace(prefix+"-", "");
-
-
-		switch(cmd) {
-			case "init":
-				let guild:Discord.Guild = this.client.guilds.cache.entries().next().value[1];
-				let roles = guild.roles.cache;
-		
-		
-				const roleOptions = [];
-				roles.forEach(r => {
-					if(!r.mentionable) return;
-					roleOptions.push(
-						{
-							label: r.name,
-							// description: 'This is a description',
-							value: r.id,
-						}
-					)
-				});
-				const menu = new Discord.MessageSelectMenu()
-					.setCustomId('select')
-					.setPlaceholder('Select an action')
-					.setMinValues(1)
-					.setMaxValues(roleOptions.length)
-					.addOptions(roleOptions);
-
-				const row = new Discord.MessageActionRow()
-				.addComponents([menu]);
-
-				await message.reply({ content: 'Init bot', components: [row] });
-				break;
-
-			case "help":
-				let str = `${Label.get("help.intro")}
-\`\`\`!${prefix}-live
-${Label.get("help.cmd_live")}\`\`\`
-\`\`\`!${prefix}-roles
-${Label.get("help.cmd_roles")}\`\`\`
-\`\`\`!${prefix}-poll <question>
-<answer 1>
-<answer 2>
-...
-<answer n>
-${Label.get("help.cmd_poll")}
-\`\`\`
-`;
-			message.reply(str);
-			break;
-
-			case "live":
-				if(isAdmin) {
-					let channelName = (<any>message.channel).name;
-					StorageController.saveData(guild.id, StorageController.LIVE_CHANNEL, message.channel.id);
-					message.reply(Label.get("live.add_ok", [{id:"channel", value:channelName}]));
-				}else{
-					message.reply(Label.get("live.ko"));
-				}
-				break;
-
-			case "live-del":
-				if(isAdmin) {
-					let channelName = (<any>message.channel).name;
-					StorageController.saveData(guild.id, StorageController.LIVE_CHANNEL, null);
-					message.reply(Label.get("live.del_ok", [{id:"channel", value:channelName}]));
-				}else{
-					message.reply(Label.get("live.ko"));
-				}
-				break;
-
-			case "roles":
-				if(isAdmin) {
-					StorageController.saveData(guild.id, StorageController.ROLES_CHANNEL, message.channel.id);
-					// this.sendRolesSelector();
-				}else{
-					message.reply(Label.get("roles.ko"));
-				}
-				break;
-
-			case "roles-del":
-				if(isAdmin) {
-					let channelName = (<any>message.channel).name;
-					StorageController.saveData(guild.id, StorageController.ROLES_CHANNEL, null);
-					message.reply(Label.get("roles.del_ok", [{id:"channel", value:channelName}]));
-				}else{
-					message.reply(Label.get("roles.ko"));
-				}
-				break;
-
-			case "poll":
-				// let options:string[] = txt.replace(prefix+"-poll", "").split(/\r|\n/gi);
-				// let title = options.splice(0,1)[0];
-				// this.createPoll(title, options, message);
-				break;
-
-		}
 	}
 
 	/**
@@ -597,57 +581,58 @@ ${Label.get("help.cmd_poll")}
 	 * @param offlineMode 
 	 * @returns 
 	 */
-	private buildLiveCard(infos:TwitchStreamInfos, userInfo:TwitchUserInfos, liveMode:boolean, offlineMode:boolean =false):Discord.MessageEmbed {
-		if(offlineMode) {
-			let url = userInfo.offline_image_url;
-			if(!url) {
-				url = Config.PUBLIC_SECURED_URL+"/uploads/offline.png";
-			}
-			infos.thumbnail_url = url.replace("{width}", "1080").replace("{height}", "600");
-		}else{
-			infos.thumbnail_url = infos.thumbnail_url.replace("{width}", "1080").replace("{height}", "600");
-		}
+	// private buildLiveCard(infos:TwitchStreamInfos, userInfo:TwitchUserInfos, liveMode:boolean, offlineMode:boolean =false):Discord.MessageEmbed {
+		// if(offlineMode) {
+		// 	let url = userInfo.offline_image_url;
+		// 	if(!url) {
+		// 		url = Config.PUBLIC_SECURED_URL+"/uploads/offline.png";
+		// 	}
+		// 	infos.thumbnail_url = url.replace("{width}", "1080").replace("{height}", "600");
+		// }else{
+		// 	infos.thumbnail_url = infos.thumbnail_url.replace("{width}", "1080").replace("{height}", "600");
+		// }
 
-		let card = new Discord.MessageEmbed();
-		card.setTitle(infos.title);
-		card.setColor("#a970ff");
-		card.setURL(`https://twitch.tv/${infos.user_login}`);
-		card.setThumbnail(userInfo.profile_image_url);
-		card.setImage(infos.thumbnail_url+"?t="+Date.now());
-		card.setAuthor(Label.get("twitch_live.online", [{id:"user", value:infos.user_name}]), userInfo.profile_image_url);
-		card.addFields(
-			{ name: Label.get("twitch_live.category"), value: infos.game_name, inline: false },
-		);
-		if(liveMode) {
-			let ellapsed = Date.now() - new Date(infos.started_at).getTime();
-			let uptime:string = Utils.formatDuration(ellapsed);
-			if(!this.maxViewersCount[userInfo.id]) this.maxViewersCount[userInfo.id] = 0;
-			this.maxViewersCount[userInfo.id] = Math.max(this.maxViewersCount[userInfo.id], infos.viewer_count);
-			card.addFields(
-				{ name: 'Viewers', value: infos.viewer_count.toString(), inline: true },
-				{ name: 'Uptime', value: uptime, inline: true },
-			);
-			this.lastStreamInfos[userInfo.id] = infos;
-		}else if(offlineMode) {
-			card.setAuthor(Label.get("twitch_live.offline", [{id:"user", value:infos.user_name}]), userInfo.profile_image_url);
-			let fields:Discord.EmbedField[] = [];
-			if(this.maxViewersCount[userInfo.id]) {
-				fields.push({ name: Label.get("twitch_live.viewers_max"), value: this.maxViewersCount[userInfo.id].toString(), inline: true });
-			}
-			let ellapsed = Date.now() - new Date(infos.started_at).getTime();
-			let uptime:string = Utils.formatDuration(ellapsed);
-			fields.push({ name: Label.get("twitch_live.stream_duration"), value: uptime, inline: true });
-			card.addFields( fields );
-		}
-		card.setFooter(userInfo.description);
-		return card;
-	}
+		// let card = new Discord.MessageEmbed();
+		// card.setTitle(infos.title);
+		// card.setColor("#a970ff");
+		// card.setURL(`https://twitch.tv/${infos.user_login}`);
+		// card.setThumbnail(userInfo.profile_image_url);
+		// card.setImage(infos.thumbnail_url+"?t="+Date.now());
+		// card.setAuthor(Label.get("twitch_live.online", [{id:"user", value:infos.user_name}]), userInfo.profile_image_url);
+		// card.addFields(
+		// 	{ name: Label.get("twitch_live.category"), value: infos.game_name, inline: false },
+		// );
+		// if(liveMode) {
+		// 	let ellapsed = Date.now() - new Date(infos.started_at).getTime();
+		// 	let uptime:string = Utils.formatDuration(ellapsed);
+		// 	if(!this.maxViewersCount[userInfo.id]) this.maxViewersCount[userInfo.id] = 0;
+		// 	this.maxViewersCount[userInfo.id] = Math.max(this.maxViewersCount[userInfo.id], infos.viewer_count);
+		// 	card.addFields(
+		// 		{ name: 'Viewers', value: infos.viewer_count.toString(), inline: true },
+		// 		{ name: 'Uptime', value: uptime, inline: true },
+		// 	);
+		// 	this.lastStreamInfos[userInfo.id] = infos;
+		// }else if(offlineMode) {
+		// 	card.setAuthor(Label.get("twitch_live.offline", [{id:"user", value:infos.user_name}]), userInfo.profile_image_url);
+		// 	let fields:Discord.EmbedField[] = [];
+		// 	if(this.maxViewersCount[userInfo.id]) {
+		// 		fields.push({ name: Label.get("twitch_live.viewers_max"), value: this.maxViewersCount[userInfo.id].toString(), inline: true });
+		// 	}
+		// 	let ellapsed = Date.now() - new Date(infos.started_at).getTime();
+		// 	let uptime:string = Utils.formatDuration(ellapsed);
+		// 	fields.push({ name: Label.get("twitch_live.stream_duration"), value: uptime, inline: true });
+		// 	card.addFields( fields );
+		// }
+		// card.setFooter(userInfo.description);
+		// return card;
+	// }
 
 	/**
 	 * Sends the roles selector on the specified channel
 	 */
 	private async allowCommandsTo(cmd?:Discord.CommandInteraction, type?:ApplicationCommandPermissionTypes, allow:boolean = true):Promise<void> {
 		let commands = (await cmd.guild.commands.fetch()).toJSON();
+		const lang = this.lang(cmd.guildId);
 		for (let i = 0; i < commands.length; i++) {
 			const command = commands[i];
 			if(command.defaultPermission) continue;//If it's a public command, no need to add permissions
@@ -668,9 +653,9 @@ ${Label.get("help.cmd_poll")}
 			await command.permissions.add({ permissions });
 			let message:string ="";
 			if(type == ApplicationCommandPermissionTypes.ROLE){
-				message = Label.get("admin.role_" + (allow?"allowed":"disallowed"), [{id:"role", value:cmd.options.get("role").role.id}]);
+				message = Label.get(lang, "admin.role_" + (allow?"allowed":"disallowed"), [{id:"role", value:cmd.options.get("role").role.id}]);
 			}else{
-				message = Label.get("admin.user_" + (allow?"allowed":"disallowed"), [{id:"user", value:cmd.options.get("user").user.id}]);
+				message = Label.get(lang, "admin.user_" + (allow?"allowed":"disallowed"), [{id:"user", value:cmd.options.get("user").user.id}]);
 			}
 			cmd.channel.send(message)
 			Logger.success(message);
@@ -682,8 +667,9 @@ ${Label.get("help.cmd_poll")}
 	 */
 	private async sendRolesSelector(cmd:Discord.CommandInteraction):Promise<void> {
 		let guild:Discord.Guild = this.client.guilds.cache.get(cmd.guildId);
+		const lang = this.lang(cmd.guildId);
 		let roles = guild.roles.cache;
-		let message = Label.get("roles.intro");
+		let message = Label.get(lang, "roles.intro");
 
 		const selectableRoles = roles.filter(r =>
 			cmd.options.data[0].options.length === 0
@@ -705,8 +691,8 @@ ${Label.get("help.cmd_poll")}
 			});
 
 			const list = new Discord.MessageSelectMenu()
-				.setCustomId('select')
-				.setPlaceholder(Label.get("roles.list_placeholder"))
+				.setCustomId('role_selector')
+				.setPlaceholder(Label.get(lang, "roles.list_placeholder"))
 				.setMinValues(1)
 				.setMaxValues(listItems.length)
 				.addOptions(listItems);
@@ -717,13 +703,13 @@ ${Label.get("help.cmd_poll")}
 
 			if(selectableRoles.length == 0) {
 				const deleteBt = new Discord.MessageButton({
-					label: Label.get("roles.del_all"),
+					label: Label.get(lang, "roles.del_all"),
 					style:"DANGER",
 					customId:"roles_delete_all"
 				})
 				const row = new Discord.MessageActionRow()
 				.addComponents([deleteBt]);
-				await cmd.channel.send({content:Label.get("roles.del_all_intro"), components:[row]});
+				await cmd.channel.send({content:Label.get(lang, "roles.del_all_intro"), components:[row]});
 			}
 		}while(selectableRoles.length > 0);
 	}
@@ -775,5 +761,14 @@ ${Label.get("help.cmd_poll")}
 	private async updateAnonPoll(poll:AnonPoll, reaction:Discord.MessageReaction):Promise<void> {
 		let msg = poll.opt.map(option => option.e + " `(x"+option.v.length+")` ➔ "+ option.n ).join("\n");
 		await reaction.message.edit(poll.title + "\n" + msg);
+	}
+
+	/**
+	 * Gets the locale configured for the specified guild
+	 */
+	private lang(guildId:string):string {
+		const lang = StorageController.getData(guildId, StorageController.LANGUAGE);
+		if(!lang) return Label.getLocales()[0].id;
+		return lang;
 	}
 }

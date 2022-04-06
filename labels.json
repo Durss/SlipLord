@@ -1,5 +1,6 @@
 {
 	"en":{
+		"language": "English",
 		"help":{
 			"intro":"Here are the available commands:",
 			"cmd_live":"Configure a channel to receive twitch live alerts",
@@ -14,13 +15,10 @@
 		"roles": {
 			"intro":"Open the selector bellow and select all the roles you want",
 			"list_placeholder":"Select one or multiple role",
-			"add_ok":":white_check_mark: <@{userId}>, you now have the role **{role}**!",
+			"add_ok":":white_check_mark: <@{user}>, you now have the selected roles !",
 			"del_all_intro":"To reset all your roles, click the button bellow",
 			"del_all":"🗑️ Remove all roles",
-			"del_all_ok":"<@{userId}>, all your roles have been reset.",
-			"del_one_ok":":x: <@{userId}>, the role **{role}** has been removed successfully.",
-			"del_ok":"The roles manager has been removed from the channel #{channel}",
-			"ko":"Only an administrator can use this command"
+			"del_all_ok":":white_check_mark: <@{user}>, all your roles have been reset."
 		},
 		"twitch_live":{
 			"online":"🔴 {user} is live!",
@@ -40,6 +38,7 @@
 		}
 	},
 	"fr":{
+		"language": "Français",
 		"help":{
 			"intro":"Voici les commandes disponibles :",
 			"cmd_live":"Configure un channel comme destination des alertes de live",
@@ -54,13 +53,10 @@
 		"roles": {
 			"intro":"Pour t'attribuer un rôle clic sur la réaction correspondante :",
 			"list_placeholder":"Selectionne un ou plusieurs rôles",
-			"add_ok":":white_check_mark: <@{userId}>, le rôle **{role}** t'a bien été attribué !",
+			"add_ok":":white_check_mark: <@{user}>, les roles t'ont bien été attribués !",
 			"del_all_intro":"Pour réinitialiser tes rôles, click le bouton ci-dessous",
 			"del_all":"Me supprimer tous les rôles",
-			"del_all_ok":"<@{userId}>, tous tes rôles t'ont bien été retirés.",
-			"del_one_ok":":x: <@{userId}>, le rôle **{role}** t'a bien été retiré !",
-			"del_ok":"Le bot de gestion de rôles a bien supprimé du channel #{channel}",
-			"ko":"Seul un Administrateur peut utiliser cette commande"
+			"del_all_ok":":white_check_mark: <@{user}>, tous tes rôles t'ont bien été retirés."
 		},
 		"twitch_live":{
 			"online":"🔴 {user} est en live !",

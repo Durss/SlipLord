@@ -23,7 +23,6 @@ export default class HTTPServer {
 		}
 
 		Label.initialize();
-		Label.setLocale(Config.LANGUAGE);
 
 		this.app = <Express>express();
 		let server = http.createServer(<any>this.app);
