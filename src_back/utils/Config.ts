@@ -14,6 +14,7 @@ export default class Config {
 	public static TWITCH_API_PATH:string = "https://api.twitch.tv/helix/";
 	
 	public static get BOT_NAME():string { return this.getData("BOT_NAME"); 	}
+	public static get CMD_PREFIX():string { return this.getData("CMD_PREFIX"); 	}
 
 	public static get PUBLIC_SECURED_URL():string { return this.getData("PUBLIC_SECURED_URL"); 	}
 	

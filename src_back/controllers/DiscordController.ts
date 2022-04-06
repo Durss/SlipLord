@@ -170,7 +170,7 @@ export default class DiscordController extends EventDispatcher {
 		
 		const roles = new SlashCommandBuilder()
 			.setDefaultPermission(false)
-			.setName('roles_selector')
+			.setName(Config.CMD_PREFIX+'roles_selector')
 			.setDescription('Adds a role selector with the specified roles or all if no roles are specified')
 			.addRoleOption(option => option.setName('role1').setDescription('role N°1'))
 			.addRoleOption(option => option.setName('role2').setDescription('role N°2'))
@@ -191,11 +191,12 @@ export default class DiscordController extends EventDispatcher {
 			.addRoleOption(option => option.setName('role17').setDescription('role N°17'))
 			.addRoleOption(option => option.setName('role18').setDescription('role N°18'))
 			.addRoleOption(option => option.setName('role19').setDescription('role N°19'))
-			.addRoleOption(option => option.setName('role20').setDescription('role N°20'))
+			.addRoleOption(option => option.setName('role20').setDescription('role N°20'));
 		
 		const admin = new SlashCommandBuilder()
+		
 			.setDefaultPermission(false)
-			.setName('admin')
+			.setName(Config.CMD_PREFIX+'admin')
 			.setDescription('admin a protobud feature')
 			.addSubcommand(subcommand =>
 				subcommand
@@ -230,7 +231,7 @@ export default class DiscordController extends EventDispatcher {
 
 		const twitch = new SlashCommandBuilder()
 			.setDefaultPermission(false)
-			.setName('twitch')
+			.setName(Config.CMD_PREFIX+'twitch')
 			.setDescription('Enable or disable tiwtch live notifications')
 			.addSubcommand(subcommand =>
 				subcommand
@@ -246,7 +247,7 @@ export default class DiscordController extends EventDispatcher {
 			)
 				
 		const poll = new SlashCommandBuilder()
-			.setName('poll')
+			.setName(Config.CMD_PREFIX+'poll')
 			.setDescription('Create a poll')
 			.addStringOption(option => option.setRequired(true).setName('title').setDescription('Title of the poll'))
 			.addStringOption(option => option.setRequired(true).setName('option1').setDescription('Name of the first option'))
@@ -359,7 +360,7 @@ export default class DiscordController extends EventDispatcher {
 	 * @returns 
 	 */
 	private async onCommand(interaction:Discord.Interaction):Promise<void> {
-		const lang = this.lang(interaction.guildId);
+		let lang = this.lang(interaction.guildId);
 		let user = await interaction.guild.members.fetch(interaction.user.id);
 		if(interaction.isButton()) {
 			switch(interaction.customId){
@@ -428,7 +429,8 @@ export default class DiscordController extends EventDispatcher {
 				const subCommand = cmd.options.getSubcommand();
 				if(subCommand) action += "/" + subCommand;
 			}catch(error) {}
-			console.log(action);
+			
+			action = action.replace(new RegExp("^"+Config.CMD_PREFIX, "i"), "");
 	
 			switch(action) {
 				case "admin/allow_role":
@@ -454,7 +456,8 @@ export default class DiscordController extends EventDispatcher {
 				
 				case "admin/language": {
 					await cmd.deferReply({ephemeral:true});
-					StorageController.saveData(cmd.guildId, StorageController.LANGUAGE, cmd.options.get("lang").value);
+					lang = cmd.options.get("lang").value as string;
+					StorageController.saveData(cmd.guildId, StorageController.LANGUAGE, lang);
 					cmd.editReply(Label.get(lang, "admin.language_updated"));
 					break;
 				}
@@ -479,7 +482,6 @@ export default class DiscordController extends EventDispatcher {
 		const user = cmd.options.get("twitch_login").value as string;
 		const userRes = await TwitchUtils.loadChannelsInfo([user]);
 		if(userRes.length>0) {
-			console.log("User found");
 			const user = userRes[0];
 			let list = StorageController.getData(cmd.guildId, StorageController.TWITCH_USERS);
 			if(!list) list = [];
@@ -700,15 +702,9 @@ export default class DiscordController extends EventDispatcher {
 	 */
 	private async sendRolesSelector(cmd:Discord.CommandInteraction):Promise<void> {
 		await cmd.deferReply();
-		let guild:Discord.Guild = this.client.guilds.cache.get(cmd.guildId);
 		const lang = this.lang(cmd.guildId);
-		let roles = guild.roles.cache;
 		let message = Label.get(lang, "roles.intro");
-
-		const selectableRoles = roles.filter(r =>
-			cmd.options.data.length === 0
-			|| cmd.options.data.findIndex(v=> v.value === r.id) > -1
-		).toJSON();
+		const selectableRoles = cmd.options.data.map(v=> v.role);
 
 		//Create as much messages as necessary depending on the number of roles VS
 		//the maximum reaction count allowed by discord

@@ -29,21 +29,28 @@
 		},
 		"admin":{
 			"role_allowed": ":white_check_mark: The role <@&{role}> has been allowed to use admin commands",
-			"role_disallowed": ":x: The role <@&{role}> is not allowed ot use admin commands anymore",
+			"role_disallowed": ":x: The role <@&{role}> is not allowed to use admin commands anymore",
 			"user_allowed": ":white_check_mark: The user <@{user}> has been allowed to use admin commands",
-			"user_disallowed": ":x: The user <@{user}> is not allowed ot use admin commands anymore",
-			"language_updated": ":x: The user <@{user}> is not allowed ot use admin commands anymore"
+			"user_disallowed": ":x: The user <@{user}> is not allowed to use admin commands anymore",
+			"language_updated": ":white_check_mark: The language has been updated"
 		},
 		"poll":{
-			"title":"Create a poll"
 		},
 		"twitch": {
 			"not_configured": ":x: This feature is missing some values in the `config.js` file to work. Fill them in and try again",
-			"user_added": ":white_check_mark: A notification will be sent on this channel when the twitch user **{user}** goes live",
+			"user_added": ":white_check_mark: A notification will be sent on this channel when the Twitch user **{user}** goes live",
 			"user_removed": ":white_check_mark: The live notifications for the **{user}** are now disabled",
-			"user_notFound": ":x: The twitch user **{user}** does not exists"
+			"user_notFound": ":x: The Twitch user **{user}** does not exists"
 		}
 	},
+
+
+
+
+
+
+
+	
 	"fr":{
 		"language": "Français",
 		"help":{
@@ -71,6 +78,21 @@
 			"category":"Catégorie",
 			"stream_duration":"Durée du stream",
 			"viewers_max":"Viewers max"
+		},
+		"admin":{
+			"role_allowed": ":white_check_mark: Le rôle <@&{role}> est maintenant autorisé à utiliser les commandes d'admin",
+			"role_disallowed": ":x: Le rôle <@&{role}> n'est plus autorisé à utiliser les commandes d'admin",
+			"user_allowed": ":white_check_mark: <@{user}> peut maintenant utiliser les commandes d'admin",
+			"user_disallowed": ":x: <@{user}> n'est plus autorisé à utiliser les commandes d'admin",
+			"language_updated": ":white_check_mark: Le langage a bien été mis à jour"
+		},
+		"poll":{
+		},
+		"twitch": {
+			"not_configured": ":x: Cette fonctionnalité nécessite des configurations dans le fichier `config.js`. Remplissez-les puis essayez à nouveau",
+			"user_added": ":white_check_mark: Une notification sera envoyée dans ce channel lorsque **{user}** sera en live sur Twitch",
+			"user_removed": ":white_check_mark: Les notifications de live de **{user}** sont maintenant désactivées",
+			"user_notFound": ":x: L'utilisateur·ice **{user}** Twitch n'existe pas"
 		}
 	}
 }
