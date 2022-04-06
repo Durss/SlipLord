@@ -2,7 +2,7 @@
 node_modules
 /dist
 /server
-/uploads/storage.json
+/uploads/*/
 configs.json
 env.conf
 
