@@ -10,7 +10,7 @@ import Label from "../utils/Label";
 import Logger from '../utils/Logger';
 import TwitchUtils, { TwitchTypes } from "../utils/TwitchUtils";
 import Utils from "../utils/Utils";
-import { AnonPoll, AnonPollOption, StorageController } from "./StorageController";
+import { AnonPoll, AnonPollOption, StorageController, TwitchLiveMessage, TwitchUser } from "./StorageController";
 
 /**
 * Created : 15/10/2020 
@@ -20,7 +20,8 @@ export default class DiscordController extends EventDispatcher {
 	private client:Discord.Client;
 	private maxViewersCount:{[key:string]:number} = {};
 	private lastStreamInfos:{[key:string]:TwitchTypes.StreamInfo} = {};
-	private BOT_TOKEN:string = Config.DISCORDBOT_TOKEN;
+	private refreshTimeouts:{[key:string]:any} = {};
+
 	private MAX_LIST_ITEMS:number = 25;//maximum reactions per message allowed by discord
 	
 	
@@ -38,7 +39,7 @@ export default class DiscordController extends EventDispatcher {
 	* PUBLIC METHODS *
 	******************/
 	public async mount(app:Express):Promise<void> {
-		if(!this.BOT_TOKEN) return;
+		if(!Config.DISCORDBOT_TOKEN) return;
 		
 		this.client = new Discord.Client({ intents: [
 			Discord.Intents.FLAGS.GUILDS,
@@ -66,7 +67,7 @@ export default class DiscordController extends EventDispatcher {
 		this.client.on("guildDelete", (guild) => StorageController.deleteStore(guild.id) );
 
 		try {
-			await this.client.login(this.BOT_TOKEN);
+			await this.client.login(Config.DISCORDBOT_TOKEN);
 		}catch(error) {
 			Logger.error("Invalid discord token !");
 			console.log(error);
@@ -78,67 +79,100 @@ export default class DiscordController extends EventDispatcher {
 	/**
 	 * Sends a message to warn that a user went live on twitch
 	 */
-	public async alertLiveChannel(uid:string, attemptCount:number = 0, editedMessage?:Discord.Message):Promise<void> {
-		//If there's data in cache, it's becasue the stream is already live.
-		//Avoid having two messages for the same stream by ignoring this one.
-		if(this.lastStreamInfos[uid] && !editedMessage) return;
+	public async alertLiveChannel(uid:string):Promise<void> {
+		console.log("ALERT");
+		clearTimeout(this.refreshTimeouts[uid]);
+		const guilds = this.client.guilds.cache.entries();
+		//Go through all guilds and check where the user should be notified
+		while(true) {
+			const guildI = guilds.next();
+			if(guildI.done) break;
+			const guild:Discord.Guild = guildI.value[1];
 
-		// let res = await TwitchUtils.getStreamsInfos(null, [uid]);
-		// let streamDetails = res.data[0];
-		// if(!streamDetails) {
-		// 	let maxAttempt = 10;
-		// 	if(attemptCount < maxAttempt) {
-		// 		if(!editedMessage) {
-		// 			Logger.info("No stream infos found for user " + uid + " try again.");
-		// 		}
-		// 		setTimeout(_=> this.alertLiveChannel(uid, attemptCount+1, editedMessage), 5000 * (attemptCount+1));
-		// 	}
+			const users:TwitchUser[] = StorageController.getData(guild.id, StorageController.TWITCH_USERS);
+			let userInfos = await TwitchUtils.loadChannelsInfo(null, [uid]);
+			let userInfo = userInfos[0];
+			for (let i = 0; i < users.length; i++) {
+				const user = users[i];
+				if(user.uid != uid) continue;
 
-		// 	if(attemptCount>=maxAttempt && editedMessage) {
-		// 		//user closed his/her stream, replace the stream picture by the offline one
-		// 		let res = await TwitchUtils.loadChannelsInfo(null, [uid]);
-		// 		let userInfo:TwitchUserInfos = (await res.json()).data[0];
+				let editedMessage :Discord.Message;
+				const channel = this.client.channels.cache.get(user.channel) as Discord.TextChannel;
+				const historyKey = user.uid +"_"+user.channel+"_"+guild.id;
+				
+				let usersStorage:{[key:string]:TwitchLiveMessage} = StorageController.getData("global", StorageController.TWITCH_USERS);
+				if(!usersStorage) usersStorage = {};
+				const messageHistory = usersStorage[historyKey];
+				console.log("Test", messageHistory);
+				//Search for the last message sent by the bot for this user on this channel
+				//and update it if it's not older than 1h
+				if(messageHistory && messageHistory.date > Date.now() - 60 * 60 * 1000) {
+					console.log("Message valid to be edited !");
+					try {
+						editedMessage = await channel.messages.fetch(messageHistory.messageId);
+					}catch(error) {
+						console.log("well..actually..nope !");
+						editedMessage = null;
+					}
 
-		// 		let card = this.buildLiveCard(this.lastStreamInfos[userInfo.id], userInfo, false, true);
-		// 		await editedMessage.edit({embeds:[card]});
-		// 		delete this.lastStreamInfos[userInfo.id];
-		// 		delete this.maxViewersCount[userInfo.id];
-		// 	}
-		// 	return;
-		// }
-		
-		// //Get channels IDs in which send alerts
-		// let channelID = StorageController.getData(StorageController.LIVE_CHANNEL);
-		// if(channelID) {
-		// 	//Get actual channel's reference
-		// 	let channel = this.client.channels.cache.get(channelID) as Discord.TextChannel;
-		// 	if(channel) {
-		// 		try {
+				}else if(messageHistory) {
+					//If there's an old message but it's older than 1h, reset infos
+					delete this.lastStreamInfos[userInfo.id];
+					delete this.maxViewersCount[userInfo.id];
+				}
 
-		// 			//Get twitch channel's infos
-		// 			let res = await TwitchUtils.loadChannelsInfo(null, [uid]);
-		// 			let userInfo:TwitchUserInfos = (await res.json()).data[0];
-		// 			let card = this.buildLiveCard(streamDetails, userInfo, editedMessage!=null);
-		// 			let message:Discord.Message;
-		// 			if(editedMessage) {
-		// 				//Edit existing message
-		// 				message = editedMessage;
-		// 				message = await message.edit({embeds:[card]});
-		// 			}else{
-		// 				message = await channel.send({embeds:[card]});
-		// 			}
-		// 			//Schedule message update 1min later
-		// 			setTimeout(_=> {
-		// 				this.alertLiveChannel(uid, 0, message);
-		// 			}, 1 * 60 * 1000);
-		// 		}catch(error) {
-		// 			Logger.error("Error while sending message to discord channel " + channelID);
-		// 			console.log(error);
-		// 		}
-		// 	}else{
-		// 		Logger.error("Channel not found");
-		// 	}
-		// }
+				let res = await TwitchUtils.getStreamsInfos(null, [uid]);
+				let streamDetails = res[0];
+				if(!streamDetails) {
+					if(editedMessage) {
+						//user closed his/her stream, replace the stream picture by the offline one
+						let card = this.buildLiveCard(guild.id, this.lastStreamInfos[userInfo.id], userInfo, false);
+						await editedMessage.edit({embeds:[card]});
+					}
+					return;
+				}
+				
+				if(channel) {
+					try {
+						//Get twitch channel's infos
+						let card = this.buildLiveCard(guild.id, streamDetails, userInfo);
+						let message:Discord.Message;
+						if(editedMessage) {
+							//Edit existing message
+							console.log('Update existing message');
+							message = editedMessage;
+							message = await message.edit({embeds:[card]});
+							
+							//Update the date on all the entries of the user on the global storage
+							const liveItem = usersStorage[historyKey];
+							liveItem.date = Date.now();
+							StorageController.saveData("global", StorageController.TWITCH_USERS, usersStorage);
+						}else{
+							console.log('Post new message');
+							//Send new message
+							message = await channel.send({embeds:[card]});
+
+							//Add a new live entry for this user on the global storage
+							usersStorage[historyKey] = {
+								date:Date.now(),
+								messageId:message.id,
+							};
+							StorageController.saveData("global", StorageController.TWITCH_USERS, usersStorage);
+						}
+
+						//Schedule message update 1min later
+						this.refreshTimeouts[uid] = setTimeout(_=> {
+							this.alertLiveChannel(uid);
+						}, 1 * 60 * 1000);
+					}catch(error) {
+						Logger.error("Error while sending message to discord channel " + user.channel);
+						console.log(error);
+					}
+				}else{
+					Logger.error("Channel not found");
+				}
+			}
+		}
 	}
 	
 	
@@ -253,7 +287,7 @@ export default class DiscordController extends EventDispatcher {
 			.addStringOption(option => option.setRequired(true).setName('option1').setDescription('Name of the first option'))
 			.addStringOption(option => option.setRequired(true).setName('option2').setDescription('Name of the second option'))
 			.addBooleanOption(option => option.setName('anonvotes').setDescription('Should votes be anonnymous?'))
-			.addBooleanOption(option => option.setName('unique').setDescription('Can user vote for only one option?'))
+			.addBooleanOption(option => option.setName('unique').setDescription('Can user vote for only one option? (only works if anonvotes is true)'))
 			.addStringOption(option => option.setName('option3').setDescription('Name of the third option'))
 			.addStringOption(option => option.setName('option4').setDescription('Name of the option 4'))
 			.addStringOption(option => option.setName('option5').setDescription('Name of the option 5'))
@@ -315,6 +349,7 @@ export default class DiscordController extends EventDispatcher {
 				}
 			}
 		}while(true);
+		Logger.success("Commands added to all guilds");
 	}
 
 	/**
@@ -351,6 +386,7 @@ export default class DiscordController extends EventDispatcher {
 				StorageController.saveData(guild.id, StorageController.ANON_POLLS, polls);
 			}
 		}
+		Logger.success("Anon polls listened successfully");
 	}
 
 	/**
@@ -558,13 +594,6 @@ export default class DiscordController extends EventDispatcher {
 			}
 			StorageController.saveData(reaction.message.guildId, StorageController.ANON_POLLS, anonPolls);
 		}
-		// if(messageIDs.indexOf(reaction.message.id) == -1) return;
-
-		// let authorId = reaction.message.author.id;
-		// let users = reaction.users.cache.entries();
-		// let userId:string;
-		// let roles:{[key:string]:{id:string, name:string}} = StorageController.getData(StorageController.ROLES_EMOJIS);
-		// let roleId = roles[reaction.emoji.name]?.id;
 	}
 
 	/**
@@ -597,11 +626,32 @@ export default class DiscordController extends EventDispatcher {
 		
 		let txt = message.content.substring(1);
 		let chunks = txt.split(/\s/gi);
-		let	cmd = chunks[0].toLowerCase();
-		let prefix = Config.BOT_NAME.toLowerCase();
+		let	cmd = chunks.shift().toLowerCase();
+		// let prefix = Config.BOT_NAME.toLowerCase();
 		
-		if(cmd.indexOf(prefix) != 0) return;
-		cmd = cmd.replace(prefix+"-", "");
+		// if(cmd.indexOf(prefix) != 0) return;
+		// cmd = cmd.replace(prefix+"-", "");
+
+		if(isAdmin) {
+			if(cmd == "test-live") {
+				const userInfos = await TwitchUtils.loadChannelsInfo([chunks[0]]);
+				if(userInfos.length == 0) {
+					message.reply("Twitch user not found")
+					return;
+				}
+
+				const user = userInfos[0];
+				const streamInfos = await TwitchUtils.getStreamsInfos(null, [user.id]);
+				if(streamInfos.length == 0) {
+					message.reply("Twitch user is not live")
+					return;
+				}
+				
+				const streamDetails = streamInfos[0];
+				let card = this.buildLiveCard(message.guildId, streamDetails, user, true);
+				await message.channel.send({embeds:[card]});
+			}
+		}
 	}
 
 	/**
@@ -613,51 +663,60 @@ export default class DiscordController extends EventDispatcher {
 	 * @param offlineMode 
 	 * @returns 
 	 */
-	// private buildLiveCard(infos:TwitchTypes.StreamInfo, userInfo:TwitchUserInfos, liveMode:boolean, offlineMode:boolean =false):Discord.MessageEmbed {
-		// if(offlineMode) {
-		// 	let url = userInfo.offline_image_url;
-		// 	if(!url) {
-		// 		url = Config.PUBLIC_SECURED_URL+"/uploads/offline.png";
-		// 	}
-		// 	infos.thumbnail_url = url.replace("{width}", "1080").replace("{height}", "600");
-		// }else{
-		// 	infos.thumbnail_url = infos.thumbnail_url.replace("{width}", "1080").replace("{height}", "600");
-		// }
+	private buildLiveCard(guildId:string, infos:TwitchTypes.StreamInfo, userInfo:TwitchTypes.UserInfo, onlineMode:boolean = true):Discord.MessageEmbed {
+		const lang = this.lang(guildId);
+		if(!onlineMode) {
+			let url = userInfo.offline_image_url;
+			if(!url) {
+				url = Config.PUBLIC_SECURED_URL+"uploads/offline.png";
+			}
+			infos.thumbnail_url = url.replace("{width}", "1080").replace("{height}", "600");
+		}else{
+			infos.thumbnail_url = infos.thumbnail_url.replace("{width}", "1080").replace("{height}", "600");
+		}
 
-		// let card = new Discord.MessageEmbed();
-		// card.setTitle(infos.title);
-		// card.setColor("#a970ff");
-		// card.setURL(`https://twitch.tv/${infos.user_login}`);
-		// card.setThumbnail(userInfo.profile_image_url);
-		// card.setImage(infos.thumbnail_url+"?t="+Date.now());
-		// card.setAuthor(Label.get("twitch_live.online", [{id:"user", value:infos.user_name}]), userInfo.profile_image_url);
-		// card.addFields(
-		// 	{ name: Label.get("twitch_live.category"), value: infos.game_name, inline: false },
-		// );
-		// if(liveMode) {
-		// 	let ellapsed = Date.now() - new Date(infos.started_at).getTime();
-		// 	let uptime:string = Utils.formatDuration(ellapsed);
-		// 	if(!this.maxViewersCount[userInfo.id]) this.maxViewersCount[userInfo.id] = 0;
-		// 	this.maxViewersCount[userInfo.id] = Math.max(this.maxViewersCount[userInfo.id], infos.viewer_count);
-		// 	card.addFields(
-		// 		{ name: 'Viewers', value: infos.viewer_count.toString(), inline: true },
-		// 		{ name: 'Uptime', value: uptime, inline: true },
-		// 	);
-		// 	this.lastStreamInfos[userInfo.id] = infos;
-		// }else if(offlineMode) {
-		// 	card.setAuthor(Label.get("twitch_live.offline", [{id:"user", value:infos.user_name}]), userInfo.profile_image_url);
-		// 	let fields:Discord.EmbedField[] = [];
-		// 	if(this.maxViewersCount[userInfo.id]) {
-		// 		fields.push({ name: Label.get("twitch_live.viewers_max"), value: this.maxViewersCount[userInfo.id].toString(), inline: true });
-		// 	}
-		// 	let ellapsed = Date.now() - new Date(infos.started_at).getTime();
-		// 	let uptime:string = Utils.formatDuration(ellapsed);
-		// 	fields.push({ name: Label.get("twitch_live.stream_duration"), value: uptime, inline: true });
-		// 	card.addFields( fields );
-		// }
-		// card.setFooter(userInfo.description);
-		// return card;
-	// }
+		const url = `https://twitch.tv/${infos.user_login}`;
+		const author = {
+			url: url,
+			name: Label.get(lang, "twitch_live.online", [{id:"user", value:infos.user_name}]),
+			iconURL: userInfo.profile_image_url,
+		}
+
+		let card = new Discord.MessageEmbed();
+		card.setTitle(infos.title);
+		card.setColor("#a970ff");
+		card.setURL(url);
+		card.setThumbnail(userInfo.profile_image_url);
+		card.setImage(infos.thumbnail_url+"?t="+Date.now());
+		card.setAuthor(author);
+		card.addFields(
+			{ name: Label.get(lang, "twitch_live.category"), value: infos.game_name, inline: false },
+		);
+		if(onlineMode) {
+			let ellapsed = Date.now() - new Date(infos.started_at).getTime();
+			let uptime:string = Utils.formatDuration(ellapsed);
+			if(!this.maxViewersCount[userInfo.id]) this.maxViewersCount[userInfo.id] = 0;
+			this.maxViewersCount[userInfo.id] = Math.max(this.maxViewersCount[userInfo.id], infos.viewer_count);
+			card.addFields(
+				{ name: 'Viewers', value: infos.viewer_count.toString(), inline: true },
+				{ name: 'Uptime', value: uptime, inline: true },
+			);
+			this.lastStreamInfos[userInfo.id] = infos;
+		}else{
+			author.name = Label.get(lang, "twitch_live.offline", [{id:"user", value:infos.user_name}]);
+			card.setAuthor(author);
+			let fields:Discord.EmbedField[] = [];
+			if(this.maxViewersCount[userInfo.id]) {
+				fields.push({ name: Label.get(lang, "twitch_live.viewers_max"), value: this.maxViewersCount[userInfo.id].toString(), inline: true });
+			}
+			let ellapsed = Date.now() - new Date(infos.started_at).getTime();
+			let uptime:string = Utils.formatDuration(ellapsed);
+			fields.push({ name: Label.get(lang, "twitch_live.stream_duration"), value: uptime, inline: true });
+			card.addFields( fields );
+		}
+		card.setFooter({text:userInfo.description});
+		return card;
+	}
 
 	/**
 	 * Sends the roles selector on the specified channel
@@ -751,10 +810,11 @@ export default class DiscordController extends EventDispatcher {
 	 */
 	private async createPoll(cmd:Discord.CommandInteraction):Promise<void> {
 		await cmd.deferReply();
+		const lang = this.lang(cmd.guildId);
+		const options:AnonPollOption[] = [];
+		const emojis = Config.DISCORDBOT_REACTION_EMOJIS.split(" ")
 		let anonMode:boolean = false;
 		let uniqueMode:boolean = false;
-		let options:AnonPollOption[] = [];
-		let emojis = Config.DISCORDBOT_REACTION_EMOJIS.split(" ")
 		let title:string;
 		for (let i = 0; i < cmd.options.data.length; i++) {
 			const p = cmd.options.data[i];
@@ -763,6 +823,9 @@ export default class DiscordController extends EventDispatcher {
 			else if(p.name=="unique") uniqueMode = p.value as boolean;
 			else options.push({n:p.value as string, e:emojis.splice(0,1)[0], v:[]});
 		}
+		
+		title += "\n"+Label.get(lang, "poll.created_by", [{id:"user", value:cmd.user.id}]);
+
 		let msg = options.map(option => {
 			const count = anonMode? " `(x"+option.v.length+"`)" : "";
 			return option.e + count + " ➔ "+ option.n;

@@ -12,8 +12,6 @@ export class StorageController {
 	private static cacheData:any = {};
 	private static cachepath:string = Config.UPLOAD_PATH;
 
-	public static LIVE_CHANNEL:string = "LIVE_CHANNEL";
-	public static ROLES_CHANNEL:string = "ROLES_CHANNEL";
 	public static ANON_POLLS:string = "ANON_POLLS";
 	public static LANGUAGE:string = "LANGUAGE";
 	public static TWITCH_USERS:string = "TWITCH_USERS";
@@ -117,4 +115,15 @@ export interface AnonPollOption {
 	n:string;
 	e:string;
 	v:string[];
+}
+
+export interface TwitchUser {
+	uid:string;
+	login:string;
+	channel:string
+}
+
+export interface TwitchLiveMessage {
+	messageId:string;
+	date:number;
 }

@@ -84,7 +84,7 @@ export default class TwitchUtils {
 		return users;
 	}
 
-	public static async getStreamsInfos(logins:string[], ids?:string[], failSafe:boolean = true):Promise<{data:TwitchTypes.StreamInfo[]}> {
+	public static async getStreamsInfos(logins:string[], ids?:string[], failSafe:boolean = true):Promise<TwitchTypes.StreamInfo[]> {
 		await this.getClientCredentialToken();//This will refresh the token if necessary
 
 		if(ids) {
@@ -118,7 +118,7 @@ export default class TwitchUtils {
 			throw(txt);
 		}else{
 			let json = await result.json();
-			return json
+			return json.data
 		}
 	}
 	

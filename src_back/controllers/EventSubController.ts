@@ -15,7 +15,6 @@ export default class EventSubController extends EventDispatcher {
 	private url:string=null;
 	private token:string=null;
 	private idsParsed:{[key:string]:boolean} = {};
-	private lastUserAlert:{[key:string]:number} = {};
 	private challengeCompleteCount:number = 0;
 	private challengeCompleteLogTimeout:any;
 	private subToList:string[] = [];
@@ -45,8 +44,6 @@ export default class EventSubController extends EventDispatcher {
 
 			this.token = await TwitchUtils.getClientCredentialToken();
 
-			await this.unsubPrevious();
-			// await this.subToUser("647389082");
 			this.onReady();
 		}
 	}
@@ -57,7 +54,6 @@ export default class EventSubController extends EventDispatcher {
 	 * @param uid	twitch user ID 
 	 */
 	public async subToUser(uid:string):Promise<void> {
-		console.log(this.url);
 		if(!this.url) {
 			Logger.warn("📢 EventSub is missing a callback URI to be initialized !");
 			return;
@@ -176,12 +172,7 @@ export default class EventSubController extends EventDispatcher {
 			if(data.type == "live") {
 				Logger.info("📢 The channel "+data.broadcaster_user_name+" went live at "+data.started_at+" with type "+data.type);
 				let uid = data.broadcaster_user_id;
-				let lastAlert = this.lastUserAlert[uid] || 999999;
-				//Alert only once every 30min
-				if(Date.now() - lastAlert > 1000 * 60 * 30) {
-					this.lastUserAlert[uid] = Date.now();
-					this.dispatchEvent(new Event(Event.DISCORD_ALERT_LIVE, uid));
-				}
+				this.dispatchEvent(new Event(Event.DISCORD_ALERT_LIVE, uid));
 			}
 		}
 		this.idsParsed[id] = true;

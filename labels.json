@@ -35,6 +35,7 @@
 			"language_updated": ":white_check_mark: The language has been updated"
 		},
 		"poll":{
+			"created_by":"_(created by <@{user}>)_"
 		},
 		"twitch": {
 			"not_configured": ":x: This feature is missing some values in the `config.js` file to work. Fill them in and try again",
@@ -87,6 +88,7 @@
 			"language_updated": ":white_check_mark: Le langage a bien été mis à jour"
 		},
 		"poll":{
+			"created_by":"_(créé par <@{user}>)_"
 		},
 		"twitch": {
 			"not_configured": ":x: Cette fonctionnalité nécessite des configurations dans le fichier `config.js`. Remplissez-les puis essayez à nouveau",
