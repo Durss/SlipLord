@@ -12,9 +12,11 @@
 			"ko":"Only an administrator can use this command"
 		},
 		"roles": {
-			"intro":"To give yourself a role click on the corresponding reaction:\n",
+			"intro":"Open the selector bellow and select all the roles you want",
+			"list_placeholder":"Select one or multiple role",
 			"add_ok":":white_check_mark: <@{userId}>, you now have the role **{role}**!",
-			"del_all":"Remove all roles",
+			"del_all_intro":"To reset all your roles, click the button bellow",
+			"del_all":"🗑️ Remove all roles",
 			"del_all_ok":"<@{userId}>, all your roles have been reset.",
 			"del_one_ok":":x: <@{userId}>, the role **{role}** has been removed successfully.",
 			"del_ok":"The roles manager has been removed from the channel #{channel}",
@@ -26,6 +28,15 @@
 			"category":"Category",
 			"stream_duration":"Stream duration",
 			"viewers_max":"Viewers max"
+		},
+		"admin":{
+			"role_allowed": ":white_check_mark: The role <@&{role}> has been allowed to use admin commands",
+			"role_disallowed": ":x: The role <@&{role}> is not allowed ot use admin commands anymore",
+			"user_allowed": ":white_check_mark: The user <@{user}> has been allowed to use admin commands",
+			"user_disallowed": ":x: The user <@{user}> is not allowed ot use admin commands anymore"
+		},
+		"poll":{
+			"title":"Create a poll"
 		}
 	},
 	"fr":{
@@ -41,8 +52,10 @@
 			"ko":"Seul un Administrateur peut utiliser cette commande"
 		},
 		"roles": {
-			"intro":"Pour t'attribuer un rôle clic sur la réaction correspondante :\n",
+			"intro":"Pour t'attribuer un rôle clic sur la réaction correspondante :",
+			"list_placeholder":"Selectionne un ou plusieurs rôles",
 			"add_ok":":white_check_mark: <@{userId}>, le rôle **{role}** t'a bien été attribué !",
+			"del_all_intro":"Pour réinitialiser tes rôles, click le bouton ci-dessous",
 			"del_all":"Me supprimer tous les rôles",
 			"del_all_ok":"<@{userId}>, tous tes rôles t'ont bien été retirés.",
 			"del_one_ok":":x: <@{userId}>, le rôle **{role}** t'a bien été retiré !",

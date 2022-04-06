@@ -1,12 +1,17 @@
+import { SlashCommandBuilder } from "@discordjs/builders";
+import { REST } from "@discordjs/rest";
+import { Routes } from "discord-api-types/v9";
 import * as Discord from "discord.js";
+import { ApplicationCommandPermissionTypes } from "discord.js/typings/enums";
 import { Express } from "express-serve-static-core";
+import * as fs from "fs";
 import Config from "../utils/Config";
 import { Event, EventDispatcher } from "../utils/EventDispatcher";
 import Label from "../utils/Label";
 import Logger from '../utils/Logger';
-import TwitchUtils, { TwitchStreamInfos, TwitchUserInfos } from "../utils/TwitchUtils";
+import { TwitchStreamInfos, TwitchUserInfos } from "../utils/TwitchUtils";
 import Utils from "../utils/Utils";
-import { StorageController } from "./StorageController";
+import { AnonPoll, AnonPollOption, StorageController } from "./StorageController";
 
 /**
 * Created : 15/10/2020 
@@ -17,7 +22,7 @@ export default class DiscordController extends EventDispatcher {
 	private maxViewersCount:{[key:string]:number} = {};
 	private lastStreamInfos:{[key:string]:TwitchStreamInfos} = {};
 	private BOT_TOKEN:string = Config.DISCORDBOT_TOKEN;
-	private MAX_REACTIONS:number = 20;//maximum reactions per message allowed by discord
+	private MAX_LIST_ITEMS:number = 25;//maximum reactions per message allowed by discord
 	
 	
 	constructor() {
@@ -36,38 +41,39 @@ export default class DiscordController extends EventDispatcher {
 	public async mount(app:Express):Promise<void> {
 		if(!this.BOT_TOKEN) return;
 		
-		if(Config.TWITCH_USER_ID) {
-			this.subToUser();
-		}
-		
 		this.client = new Discord.Client({ intents: [
 			Discord.Intents.FLAGS.GUILDS,
+			Discord.Intents.FLAGS.GUILD_MEMBERS,
 			Discord.Intents.FLAGS.GUILD_MESSAGES,
+			Discord.Intents.FLAGS.DIRECT_MESSAGES,
 			Discord.Intents.FLAGS.GUILD_MESSAGE_REACTIONS,
 			Discord.Intents.FLAGS.DIRECT_MESSAGE_REACTIONS,
-			Discord.Intents.FLAGS.DIRECT_MESSAGES
 		] });
 
-		this.client.on("messageCreate", (message) => this.onMessage(message));
-		
-		this.client.on("messageReactionAdd", (reaction) => this.onAddReaction(reaction as Discord.MessageReaction));
-		this.client.on("messageReactionRemove", (reaction) => this.onRemoveReaction(reaction as Discord.MessageReaction));
-
+		//Called when API is ready
 		this.client.on("ready", ()=> this.onReady());
-
+		this.client.on("messageCreate", (message) => this.onMessage(message));
+		//Called when using a /command
+		this.client.on("interactionCreate", (interaction) => this.onCommand(interaction))
+		//Called when a reaction is added to a message
+		this.client.on("messageReactionAdd", (reaction) => this.onAddReaction(reaction as Discord.MessageReaction));
+		//Called when a reaction is removed from a message
+		this.client.on("messageReactionRemove", (reaction) => this.onRemoveReaction(reaction as Discord.MessageReaction));
+		//Called when a new member joins the server
 		this.client.on("guildMemberAdd", (member) => this.onAddMember(member))
+		//Called when bot is added to a new discord
+		this.client.on("guildCreate", (guild) => this.createCommands(guild) );
+		//Called when bot is kicked out a discord
+		this.client.on("guildDelete", (guild) => StorageController.deleteStore(guild.id) );
 
-		this.client.on("raw", (link) => {
-			// console.log("ON RAW")
-			// console.log(link);
-		});
-		
 		try {
 			await this.client.login(this.BOT_TOKEN);
 		}catch(error) {
 			Logger.error("Invalid discord token !");
 			console.log(error);
 		}
+		this.createCommands();
+		this.listenForReactions();
 	}
 
 	/**
@@ -78,62 +84,62 @@ export default class DiscordController extends EventDispatcher {
 		//Avoid having two messages for the same stream by ignoring this one.
 		if(this.lastStreamInfos[uid] && !editedMessage) return;
 
-		let res = await TwitchUtils.getStreamsInfos(null, [uid]);
-		let streamDetails = res.data[0];
-		if(!streamDetails) {
-			let maxAttempt = 10;
-			if(attemptCount < maxAttempt) {
-				if(!editedMessage) {
-					Logger.info("No stream infos found for user " + uid + " try again.");
-				}
-				setTimeout(_=> this.alertLiveChannel(uid, attemptCount+1, editedMessage), 5000 * (attemptCount+1));
-			}
+		// let res = await TwitchUtils.getStreamsInfos(null, [uid]);
+		// let streamDetails = res.data[0];
+		// if(!streamDetails) {
+		// 	let maxAttempt = 10;
+		// 	if(attemptCount < maxAttempt) {
+		// 		if(!editedMessage) {
+		// 			Logger.info("No stream infos found for user " + uid + " try again.");
+		// 		}
+		// 		setTimeout(_=> this.alertLiveChannel(uid, attemptCount+1, editedMessage), 5000 * (attemptCount+1));
+		// 	}
 
-			if(attemptCount>=maxAttempt && editedMessage) {
-				//user closed his/her stream, replace the stream picture by the offline one
-				let res = await TwitchUtils.loadChannelsInfo(null, [uid]);
-				let userInfo:TwitchUserInfos = (await res.json()).data[0];
+		// 	if(attemptCount>=maxAttempt && editedMessage) {
+		// 		//user closed his/her stream, replace the stream picture by the offline one
+		// 		let res = await TwitchUtils.loadChannelsInfo(null, [uid]);
+		// 		let userInfo:TwitchUserInfos = (await res.json()).data[0];
 
-				let card = this.buildLiveCard(this.lastStreamInfos[userInfo.id], userInfo, false, true);
-				await editedMessage.edit({embeds:[card]});
-				delete this.lastStreamInfos[userInfo.id];
-				delete this.maxViewersCount[userInfo.id];
-			}
-			return;
-		}
+		// 		let card = this.buildLiveCard(this.lastStreamInfos[userInfo.id], userInfo, false, true);
+		// 		await editedMessage.edit({embeds:[card]});
+		// 		delete this.lastStreamInfos[userInfo.id];
+		// 		delete this.maxViewersCount[userInfo.id];
+		// 	}
+		// 	return;
+		// }
 		
-		//Get channels IDs in which send alerts
-		let channelID = StorageController.getData(StorageController.LIVE_CHANNEL);
-		if(channelID) {
-			//Get actual channel's reference
-			let channel = this.client.channels.cache.get(channelID) as Discord.TextChannel;
-			if(channel) {
-				try {
+		// //Get channels IDs in which send alerts
+		// let channelID = StorageController.getData(StorageController.LIVE_CHANNEL);
+		// if(channelID) {
+		// 	//Get actual channel's reference
+		// 	let channel = this.client.channels.cache.get(channelID) as Discord.TextChannel;
+		// 	if(channel) {
+		// 		try {
 
-					//Get twitch channel's infos
-					let res = await TwitchUtils.loadChannelsInfo(null, [uid]);
-					let userInfo:TwitchUserInfos = (await res.json()).data[0];
-					let card = this.buildLiveCard(streamDetails, userInfo, editedMessage!=null);
-					let message:Discord.Message;
-					if(editedMessage) {
-						//Edit existing message
-						message = editedMessage;
-						message = await message.edit({embeds:[card]});
-					}else{
-						message = await channel.send({embeds:[card]});
-					}
-					//Schedule message update 1min later
-					setTimeout(_=> {
-						this.alertLiveChannel(uid, 0, message);
-					}, 1 * 60 * 1000);
-				}catch(error) {
-					Logger.error("Error while sending message to discord channel " + channelID);
-					console.log(error);
-				}
-			}else{
-				Logger.error("Channel not found");
-			}
-		}
+		// 			//Get twitch channel's infos
+		// 			let res = await TwitchUtils.loadChannelsInfo(null, [uid]);
+		// 			let userInfo:TwitchUserInfos = (await res.json()).data[0];
+		// 			let card = this.buildLiveCard(streamDetails, userInfo, editedMessage!=null);
+		// 			let message:Discord.Message;
+		// 			if(editedMessage) {
+		// 				//Edit existing message
+		// 				message = editedMessage;
+		// 				message = await message.edit({embeds:[card]});
+		// 			}else{
+		// 				message = await channel.send({embeds:[card]});
+		// 			}
+		// 			//Schedule message update 1min later
+		// 			setTimeout(_=> {
+		// 				this.alertLiveChannel(uid, 0, message);
+		// 			}, 1 * 60 * 1000);
+		// 		}catch(error) {
+		// 			Logger.error("Error while sending message to discord channel " + channelID);
+		// 			console.log(error);
+		// 		}
+		// 	}else{
+		// 		Logger.error("Channel not found");
+		// 	}
+		// }
 	}
 	
 	
@@ -143,16 +149,250 @@ export default class DiscordController extends EventDispatcher {
 	*******************/
 	private async onReady():Promise<void> {
 		Logger.success("Discord bot connected");
-		let channelID = StorageController.getData(StorageController.ROLES_CHANNEL);
-		if(channelID) {
-			//Forces refresh of the message so we can receive reactions even
-			//after a reboot of the server
-			this.sendRolesSelector();
-		}
+		// let channelID = StorageController.getData(StorageController.ROLES_CHANNEL);
+		// if(channelID) {
+		// 	//Forces refresh of the message so we can receive reactions even
+		// 	//after a reboot of the server
+		// 	this.sendRolesSelector();
+		// }
 	}
 
 	private subToUser() {
 		this.dispatchEvent(new Event(Event.SUB_TO_LIVE_EVENT, Config.TWITCH_USER_ID));
+	}
+
+	/**
+	 * Creates the bot's commands and add them to all the guilds
+	 */
+	private async createCommands(guild?:Discord.Guild):Promise<void> {
+		const rest = new REST({ version: '9' }).setToken(Config.DISCORDBOT_TOKEN);
+		const admin = new SlashCommandBuilder()
+		.setDefaultPermission(false)
+		.setName('admin')
+		.setDescription('admin a protobud feature')
+		.addSubcommand(subcommand =>
+			subcommand
+				.setName('roles')
+				.setDescription('Adds a role selector with the specified roles or all if no roles are specified')
+				.addRoleOption(option => option.setName('role1').setDescription('role N°1'))
+				.addRoleOption(option => option.setName('role2').setDescription('role N°2'))
+				.addRoleOption(option => option.setName('role3').setDescription('role N°3'))
+				.addRoleOption(option => option.setName('role4').setDescription('role N°4'))
+				.addRoleOption(option => option.setName('role5').setDescription('role N°5'))
+				.addRoleOption(option => option.setName('role6').setDescription('role N°6'))
+				.addRoleOption(option => option.setName('role7').setDescription('role N°7'))
+				.addRoleOption(option => option.setName('role8').setDescription('role N°8'))
+				.addRoleOption(option => option.setName('role9').setDescription('role N°9'))
+				.addRoleOption(option => option.setName('role10').setDescription('role N°10'))
+				.addRoleOption(option => option.setName('role11').setDescription('role N°11'))
+				.addRoleOption(option => option.setName('role12').setDescription('role N°12'))
+				.addRoleOption(option => option.setName('role13').setDescription('role N°13'))
+				.addRoleOption(option => option.setName('role14').setDescription('role N°14'))
+				.addRoleOption(option => option.setName('role15').setDescription('role N°15'))
+				.addRoleOption(option => option.setName('role16').setDescription('role N°16'))
+				.addRoleOption(option => option.setName('role17').setDescription('role N°17'))
+				.addRoleOption(option => option.setName('role18').setDescription('role N°18'))
+				.addRoleOption(option => option.setName('role19').setDescription('role N°19'))
+				.addRoleOption(option => option.setName('role20').setDescription('role N°20'))
+		)
+		.addSubcommand(subcommand =>
+			subcommand
+				.setName('allow_role')
+				.setDescription('Allows the specified role to use the "admin" commands')
+				.addRoleOption(option => option.setRequired(true).setName('role').setDescription('Role to allow'))
+		)
+		.addSubcommand(subcommand =>
+			subcommand
+				.setName('disallow_role')
+				.setDescription('Removes a role from the allowed roles to use "admin" commands')
+				.addRoleOption(option => option.setRequired(true).setName('role').setDescription('Role to disallow'))
+		)
+		.addSubcommand(subcommand =>
+			subcommand
+				.setName('allow_user')
+				.setDescription('Allows the specified user to use the "admin" commands')
+				.addUserOption(option => option.setRequired(true).setName('user').setDescription('User to allow'))
+		)
+		.addSubcommand(subcommand =>
+			subcommand
+				.setName('disallow_user')
+				.setDescription('Removes the specified user from the users allowed to use the "admin" commands')
+				.addUserOption(option => option.setRequired(true).setName('user').setDescription('User to disallow'))
+		)
+		.addSubcommand(subcommand =>
+			subcommand
+				.setName('twitch_live')
+				.setDescription('Get notified when a twitch channel goes live by sending a card on this channel')
+				.addStringOption(option => option.setRequired(true).setName('twitch_login').setDescription('The twitch login of the channel to add'))
+				);
+				
+		const poll = new SlashCommandBuilder()
+			.setName('poll')
+			.setDescription('Create a poll')
+			.addStringOption(option => option.setRequired(true).setName('title').setDescription('Title of the poll'))
+			.addStringOption(option => option.setRequired(true).setName('option1').setDescription('Name of the first option'))
+			.addStringOption(option => option.setRequired(true).setName('option2').setDescription('Name of the second option'))
+			.addBooleanOption(option => option.setName('anonvotes').setDescription('Should votes be anonnymous?'))
+
+			.addBooleanOption(option => option.setName('unique').setDescription('Can user vote for only one option?'))
+			.addStringOption(option => option.setName('option3').setDescription('Name of the third option'))
+			.addStringOption(option => option.setName('option4').setDescription('Name of the option 4'))
+			.addStringOption(option => option.setName('option5').setDescription('Name of the option 5'))
+			.addStringOption(option => option.setName('option6').setDescription('Name of the option 6'))
+			.addStringOption(option => option.setName('option7').setDescription('Name of the option 7'))
+			.addStringOption(option => option.setName('option8').setDescription('Name of the option 8'))
+			.addStringOption(option => option.setName('option9').setDescription('Name of the option 9'))
+			.addStringOption(option => option.setName('option10').setDescription('Name of the option 10'))
+			.addStringOption(option => option.setName('option11').setDescription('Name of the option 11'))
+			.addStringOption(option => option.setName('option12').setDescription('Name of the option 12'))
+			.addStringOption(option => option.setName('option13').setDescription('Name of the option 13'))
+			.addStringOption(option => option.setName('option14').setDescription('Name of the option 14'))
+			.addStringOption(option => option.setName('option15').setDescription('Name of the option 15'))
+			.addStringOption(option => option.setName('option16').setDescription('Name of the option 16'))
+			.addStringOption(option => option.setName('option17').setDescription('Name of the option 17'))
+			.addStringOption(option => option.setName('option18').setDescription('Name of the option 18'))
+			.addStringOption(option => option.setName('option19').setDescription('Name of the option 19'))
+			.addStringOption(option => option.setName('option20').setDescription('Name of the option 20'))
+
+		//Add commands to all guilds the bot has been added to
+		const guilds = this.client.guilds.cache.entries();
+		do {
+			//Add commands to current guild
+			const guildLocal = guilds.next();
+			if(guildLocal.done) break;
+
+			//If adding command to one specific discord, ignore the others
+			if(guild && guild.id != guildLocal.value[0]) continue;
+
+			await rest.put(
+				Routes.applicationGuildCommands(Config.DISCORDBOT_CLIENT_ID, guildLocal.value[0]),
+				{ body: [admin.toJSON(), poll.toJSON()] },
+			);
+			
+			//Allow admins to use all commands
+			const guildItem:Discord.Guild = guildLocal.value[1];
+			let members = await guildItem.members.fetch();
+			let commands = (await guildItem.commands.fetch()).toJSON();
+			const admins = members.filter(v => v.permissions.has("ADMINISTRATOR")).toJSON();
+			
+			for (let h = 0; h < admins.length; h++) {
+				const admin = admins[h];
+				
+				for (let i = 0; i < commands.length; i++) {
+					const command = commands[i];
+					if(command.defaultPermission) continue;//If it's a public command, no need to add permissions
+					//Remove all users
+					// const perms = command.permissions;
+					// await perms.remove({users: members.map(v=>v.user.id)});
+					const permissions = [
+						{
+							id: admin.user.id,
+							type: ApplicationCommandPermissionTypes.USER,
+							permission: true,
+						},
+					];
+
+					await command.permissions.add({ permissions });
+				}
+			}
+		}while(true);
+	}
+
+	/**
+	 * Listens for reactions on anon polls.
+	 * When server reboots all reaction events are lost, we need
+	 * to subscribe back manually
+	 */
+	private async listenForReactions():Promise<void> {
+		//Add commands to all guilds the bot has been added to
+		const guilds = this.client.guilds.cache.entries();
+		while(true) {
+			//Add commands to current guild
+			const guildLocal = guilds.next();
+			if(guildLocal.done) break;
+			const guild = guildLocal.value[1] as Discord.Guild;
+			await guild.fetch();
+			
+			//Loads up all the polls messages in cache so we can receive
+			//the reactions
+			const polls:AnonPoll[] = StorageController.getData(guild.id, StorageController.ANON_POLLS);
+			if(polls) {
+				for (let i = 0; i < polls.length; i++) {
+					const poll = polls[i];
+					const chan = await guild.channels.cache.get(poll.chan).fetch() as Discord.TextChannel;
+					try {
+						//Simply load the message in cache to receive the reactions updates
+						await chan.messages.fetch(poll.id);
+					}catch(err) {
+						//Cleanup the poll from storage
+						polls.splice(i,1);
+						i--;
+					}
+				}
+				StorageController.saveData(guild.id, StorageController.ANON_POLLS, polls);
+			}
+		}
+	}
+
+	/**
+	 * Called when a command is executed
+	 * 
+	 * @param interaction 
+	 * @returns 
+	 */
+	private async onCommand(interaction:Discord.Interaction):Promise<void> {
+		if(!interaction.isCommand()) return;
+		
+		const cmd = interaction as Discord.CommandInteraction;
+		let action = cmd.commandName;
+		try {
+			const subCommand = cmd.options.getSubcommand();
+			if(subCommand) action += "/" + subCommand;
+		}catch(error) {}
+		
+		await interaction.deferReply();
+
+		switch(action) {
+			case "admin/allow_role": {
+				this.allowCommandsTo(cmd, ApplicationCommandPermissionTypes.ROLE);
+				break;
+			}
+			case "admin/disallow_role": {
+				this.allowCommandsTo(cmd, ApplicationCommandPermissionTypes.ROLE, false);
+				break;
+			}
+			case "admin/allow_user": {
+				this.allowCommandsTo(cmd, ApplicationCommandPermissionTypes.USER);
+				break;
+			}
+			case "admin/disallow_user": {
+				this.allowCommandsTo(cmd, ApplicationCommandPermissionTypes.USER, false);
+				break;
+			}
+
+			case "admin/roles": {
+				await this.sendRolesSelector(cmd);
+				break;
+			}
+			
+			case "admin/twitch_live": {
+				this.addTwitchLiveAlertChannel();
+				break;
+			}
+			
+			case "poll": {
+				this.createPoll(cmd);
+				break;
+			}
+		}
+
+		//Cleanup the default discord message
+		const m = await interaction.fetchReply() as Discord.Message;
+		await m.delete();
+	}
+
+	private async addTwitchLiveAlertChannel():Promise<void> {
+
 	}
 
 	/**
@@ -173,58 +413,47 @@ export default class DiscordController extends EventDispatcher {
 	 * Called when someone uses a reaction on a message
 	 */
 	private async onAddReaction(reaction:Discord.MessageReaction):Promise<void> {
-		let messageIDs = StorageController.getData(StorageController.ROLES_SELECTOR_MESSAGES);
-		if(messageIDs.indexOf(reaction.message.id) == -1) return;
-
-		let authorId = reaction.message.author.id;
-		let users = reaction.users.cache.entries();
-		let userId:string;
-		let roles:{[key:string]:{id:string, name:string}} = StorageController.getData(StorageController.ROLES_EMOJIS);
-		let roleId = roles[reaction.emoji.name]?.id;
-
-		//Get channels IDs in which send alerts
-		let channelID = StorageController.getData(StorageController.ROLES_CHANNEL);
-		if(!roleId) {
-			//If using an unsupported emote juste remove the reaction
-			await reaction.remove();
-			return;
-		}
-		if(channelID) {
-			//Get actual channel's reference
-			let channel = this.client.channels.cache.get(channelID) as Discord.TextChannel;
-
-			do {
-				if(userId && userId != authorId) {
-					let user = await reaction.message.guild.members.fetch(userId);
-					let answer:Discord.Message;
-					if(roleId == "DELETE_ALL") {
-						user.roles.cache.forEach(role => {
-							if(role.mentionable) {
-								user.roles.remove(role.id);
+		let anonPolls = StorageController.getData(reaction.message.guildId, StorageController.ANON_POLLS) as AnonPoll[];
+		if(anonPolls){
+			//Check if react to an anon poll and update it if so
+			for (let i = 0; i < anonPolls.length; i++) {
+				const p = anonPolls[i];
+				if(p.id === reaction.message.id) {
+					//Found an anon poll matching the reaction source
+					const users = reaction.users.cache.entries();
+					while(true){
+						const user = users.next();
+						let update = false;
+						if(user.done) break;
+						if(user.value[0] === reaction.message.author.id) continue;
+						p.opt.forEach(o=> {
+							if(o.e === reaction.emoji.name) {
+								if(o.v.indexOf(user.value[0]) == -1) {
+									o.v.push(user.value[0]);
+									update = true;
+								}
+							}else if(p.unique === true && o.v.indexOf(user.value[0]) > -1) {
+								const index = o.v.indexOf(user.value[0]);
+								o.v.splice(index, 1);
+								update = true;
 							}
 						});
-						answer = await channel.send(Label.get("roles.del_all_ok", [{id:"userId", value:userId}]));
-					}else{
-						let role = await reaction.message.guild.roles.fetch(roleId);
-						if(user.roles.cache.has(role.id)) {
-							answer = await channel.send(Label.get("roles.del_one_ok", [{id:"userId", value:userId}, {id:"role", value:role.name}]));
-							user.roles.remove(roleId);
-						}else{
-							answer = await channel.send(Label.get("roles.add_ok", [{id:"userId", value:userId}, {id:"role", value:role.name}]));
-							user.roles.add(roleId);
+						if(update) {
+							this.updateAnonPoll(p, reaction);
 						}
+						reaction.users.remove(user.value[0]);
 					}
-					reaction.users.remove(userId);
-					setTimeout(async _=> {
-						try {
-							await answer.delete();
-						}catch(error) {};
-					}, 10000);
 				}
-				let next = users.next();
-				userId = next.value ? next.value[0] : null;
-			}while(userId);
+			}
+			StorageController.saveData(reaction.message.guildId, StorageController.ANON_POLLS, anonPolls);
 		}
+		// if(messageIDs.indexOf(reaction.message.id) == -1) return;
+
+		// let authorId = reaction.message.author.id;
+		// let users = reaction.users.cache.entries();
+		// let userId:string;
+		// let roles:{[key:string]:{id:string, name:string}} = StorageController.getData(StorageController.ROLES_EMOJIS);
+		// let roleId = roles[reaction.emoji.name]?.id;
 	}
 
 	/**
@@ -265,6 +494,35 @@ export default class DiscordController extends EventDispatcher {
 
 
 		switch(cmd) {
+			case "init":
+				let guild:Discord.Guild = this.client.guilds.cache.entries().next().value[1];
+				let roles = guild.roles.cache;
+		
+		
+				const roleOptions = [];
+				roles.forEach(r => {
+					if(!r.mentionable) return;
+					roleOptions.push(
+						{
+							label: r.name,
+							// description: 'This is a description',
+							value: r.id,
+						}
+					)
+				});
+				const menu = new Discord.MessageSelectMenu()
+					.setCustomId('select')
+					.setPlaceholder('Select an action')
+					.setMinValues(1)
+					.setMaxValues(roleOptions.length)
+					.addOptions(roleOptions);
+
+				const row = new Discord.MessageActionRow()
+				.addComponents([menu]);
+
+				await message.reply({ content: 'Init bot', components: [row] });
+				break;
+
 			case "help":
 				let str = `${Label.get("help.intro")}
 \`\`\`!${prefix}-live
@@ -285,7 +543,7 @@ ${Label.get("help.cmd_poll")}
 			case "live":
 				if(isAdmin) {
 					let channelName = (<any>message.channel).name;
-					StorageController.saveData(StorageController.LIVE_CHANNEL, message.channel.id);
+					StorageController.saveData(guild.id, StorageController.LIVE_CHANNEL, message.channel.id);
 					message.reply(Label.get("live.add_ok", [{id:"channel", value:channelName}]));
 				}else{
 					message.reply(Label.get("live.ko"));
@@ -295,7 +553,7 @@ ${Label.get("help.cmd_poll")}
 			case "live-del":
 				if(isAdmin) {
 					let channelName = (<any>message.channel).name;
-					StorageController.saveData(StorageController.LIVE_CHANNEL, null);
+					StorageController.saveData(guild.id, StorageController.LIVE_CHANNEL, null);
 					message.reply(Label.get("live.del_ok", [{id:"channel", value:channelName}]));
 				}else{
 					message.reply(Label.get("live.ko"));
@@ -304,8 +562,8 @@ ${Label.get("help.cmd_poll")}
 
 			case "roles":
 				if(isAdmin) {
-					StorageController.saveData(StorageController.ROLES_CHANNEL, message.channel.id);
-					this.sendRolesSelector();
+					StorageController.saveData(guild.id, StorageController.ROLES_CHANNEL, message.channel.id);
+					// this.sendRolesSelector();
 				}else{
 					message.reply(Label.get("roles.ko"));
 				}
@@ -314,7 +572,7 @@ ${Label.get("help.cmd_poll")}
 			case "roles-del":
 				if(isAdmin) {
 					let channelName = (<any>message.channel).name;
-					StorageController.saveData(StorageController.ROLES_CHANNEL, null);
+					StorageController.saveData(guild.id, StorageController.ROLES_CHANNEL, null);
 					message.reply(Label.get("roles.del_ok", [{id:"channel", value:channelName}]));
 				}else{
 					message.reply(Label.get("roles.ko"));
@@ -322,9 +580,9 @@ ${Label.get("help.cmd_poll")}
 				break;
 
 			case "poll":
-				let options:string[] = txt.replace(prefix+"-poll", "").split(/\r|\n/gi);
-				let title = options.splice(0,1)[0];
-				this.createPoll(title, options, message);
+				// let options:string[] = txt.replace(prefix+"-poll", "").split(/\r|\n/gi);
+				// let title = options.splice(0,1)[0];
+				// this.createPoll(title, options, message);
 				break;
 
 		}
@@ -388,119 +646,134 @@ ${Label.get("help.cmd_poll")}
 	/**
 	 * Sends the roles selector on the specified channel
 	 */
-	private async sendRolesSelector():Promise<void> {
-		let guild:Discord.Guild = this.client.guilds.cache.entries().next().value[1];
-		let roles = guild.roles.cache;
-		let emojiList = Config.DISCORDBOT_REACTION_EMOJIS.split(" ");
-		let reactionEmojis:string[] = [];
-		let message = Label.get("roles.intro");
-		let emojiToRole:{[key:string]:{id:string,name:string}} = {};
-
-
-		let index = 0;
-		roles.forEach(r => {
-			if(!r.mentionable) return;
-			let e = emojiList.shift();
-			emojiToRole[e] = {id:r.id, name:r.name};
-			reactionEmojis.push(e);
-		});
-		emojiToRole["🗑️"] = {id:"DELETE_ALL", name:Label.get("roles.del_all")};
-		reactionEmojis.push("🗑️");
-		let messagesCount = Math.ceil(reactionEmojis.length/this.MAX_REACTIONS);
-
-		StorageController.saveData(StorageController.ROLES_EMOJIS, emojiToRole);
-		//Get channels IDs in which send alerts
-		let channelID = StorageController.getData(StorageController.ROLES_CHANNEL);
-		let messageIDs = [];
-		if(channelID) {
-			//Get actual channel's reference
-			let channel = this.client.channels.cache.get(channelID) as Discord.TextChannel;
-			const previousMessageIDs:string[] = StorageController.getData(StorageController.ROLES_SELECTOR_MESSAGES)?.split(",");
-
-			//If there are more messages than actually necessary, clean them up.
-			//This can happen when deleting roles from discord.
-			if(previousMessageIDs && previousMessageIDs.length > messagesCount) {
-				console.log(previousMessageIDs.length +" VS "+ messagesCount);
-				for (let i = messagesCount; i < previousMessageIDs.length; i++) {
-					try {
-						let m = await channel.messages.fetch(previousMessageIDs[i]);
-						await m.delete();
-					}catch(error) {}
-				}
+	private async allowCommandsTo(cmd?:Discord.CommandInteraction, type?:ApplicationCommandPermissionTypes, allow:boolean = true):Promise<void> {
+		let commands = (await cmd.guild.commands.fetch()).toJSON();
+		for (let i = 0; i < commands.length; i++) {
+			const command = commands[i];
+			if(command.defaultPermission) continue;//If it's a public command, no need to add permissions
+			let id:string;
+			if(type == ApplicationCommandPermissionTypes.ROLE){
+				id = cmd.options.get("role").role.id;
+			}else{
+				id = cmd.options.get("user").user.id;
 			}
-			
-			//Create as much messages as necessary depending on the number of roles VS
-			//the maximum reaction count allowed by discord
-			do {
-				let discordMessage:Discord.Message;
-				//Define emojis and text message
-				let emojis = reactionEmojis.splice(0, this.MAX_REACTIONS);
-				emojis.forEach(e => {
-					let role = emojiToRole[e];
-					message += e + " - " + role.name + "\n";
-				});
-				
-				if(previousMessageIDs) {
-					//Edit previous message if any
-					try {
-						let messageToEdit = await channel.messages.fetch(previousMessageIDs[index]);
-						if(messageToEdit) {
-							discordMessage = await messageToEdit.edit(message);
-							await discordMessage.reactions.removeAll();
-						}
-					}catch(error) {
-						// Logger.error("Roles message not found")
-						discordMessage = null;
-					}
-				}
-				//If no previous message, create a new one
-				if(!discordMessage){
-					discordMessage = await channel.send(message);
-				}
+			const permissions = [
+				{
+					id,
+					type,
+					permission: allow,
+				},
+			];
 
-				//Add reactions to the message
-				emojis.forEach(async v => {
-					try {
-						await discordMessage.react(v);
-					}catch(error) {
-						console.log("Failed ", v);
-					}
-				});
-				index ++;
-				message = "";
-				messageIDs.push(discordMessage.id);
-			}while(reactionEmojis.length > 0);
-			StorageController.saveData(StorageController.ROLES_SELECTOR_MESSAGES, messageIDs.join(","));
+			await command.permissions.add({ permissions });
+			let message:string ="";
+			if(type == ApplicationCommandPermissionTypes.ROLE){
+				message = Label.get("admin.role_" + (allow?"allowed":"disallowed"), [{id:"role", value:cmd.options.get("role").role.id}]);
+			}else{
+				message = Label.get("admin.user_" + (allow?"allowed":"disallowed"), [{id:"user", value:cmd.options.get("user").user.id}]);
+			}
+			cmd.channel.send(message)
+			Logger.success(message);
 		}
-		//*/
+	}
+
+	/**
+	 * Sends the roles selector on the specified channel
+	 */
+	private async sendRolesSelector(cmd:Discord.CommandInteraction):Promise<void> {
+		let guild:Discord.Guild = this.client.guilds.cache.get(cmd.guildId);
+		let roles = guild.roles.cache;
+		let message = Label.get("roles.intro");
+
+		const selectableRoles = roles.filter(r =>
+			cmd.options.data[0].options.length === 0
+			|| cmd.options.data[0].options.findIndex(v=> v.value === r.id) > -1
+		).toJSON();
+
+		//Create as much messages as necessary depending on the number of roles VS
+		//the maximum reaction count allowed by discord
+		do {
+			let roles = selectableRoles.splice(0, this.MAX_LIST_ITEMS);
+			const listItems = [];
+			roles.forEach(r => {
+				listItems.push(
+					{
+						label: r.name,
+						value: r.id,
+					}
+				)
+			});
+
+			const list = new Discord.MessageSelectMenu()
+				.setCustomId('select')
+				.setPlaceholder(Label.get("roles.list_placeholder"))
+				.setMinValues(1)
+				.setMaxValues(listItems.length)
+				.addOptions(listItems);
+			const row = new Discord.MessageActionRow()
+			.addComponents([list]);
+
+			await cmd.channel.send({content:message, components:[row]});
+
+			if(selectableRoles.length == 0) {
+				const deleteBt = new Discord.MessageButton({
+					label: Label.get("roles.del_all"),
+					style:"DANGER",
+					customId:"roles_delete_all"
+				})
+				const row = new Discord.MessageActionRow()
+				.addComponents([deleteBt]);
+				await cmd.channel.send({content:Label.get("roles.del_all_intro"), components:[row]});
+			}
+		}while(selectableRoles.length > 0);
 	}
 
 	/**
 	 * Creates a poll
-	 * @param title poll's title
-	 * @param options poll's options
 	 */
-	private async createPoll(title:string, options:string[], message:Discord.Message):Promise<void> {
-		let emojis = Config.DISCORDBOT_REACTION_EMOJIS.split(" ").splice(0, options.length);
-		options = options.map((option, index) => emojis[index] + " : "+ option );
+	private async createPoll(cmd:Discord.CommandInteraction):Promise<void> {
+		let anonMode:boolean = false;
+		let uniqueMode:boolean = false;
+		let options:AnonPollOption[] = [];
+		let emojis = Config.DISCORDBOT_REACTION_EMOJIS.split(" ")
+		let title:string;
+		for (let i = 0; i < cmd.options.data.length; i++) {
+			const p = cmd.options.data[i];
+			if(p.name=="title") title = p.value as string;
+			else if(p.name=="anonvotes") anonMode = p.value as boolean;
+			else if(p.name=="unique") uniqueMode = p.value as boolean;
+			else options.push({n:p.value as string, e:emojis.splice(0,1)[0], v:[]});
+		}
+		let msg = options.map(option => {
+			const count = anonMode? " `(x"+option.v.length+"`)" : "";
+			return option.e + count + " ➔ "+ option.n;
+		}).join("\n");
 
-		let messagesCount = Math.ceil(options.length/this.MAX_REACTIONS);
-		let index = 0;
-		do {
-			let msg = options.splice(0, this.MAX_REACTIONS).join("\n");
-			let t = title;
-			let e = emojis.splice(0, this.MAX_REACTIONS);
-			if(messagesCount > 1) t += " *("+(index+1)+"/"+messagesCount+")*";
-			let discordMessage = await message.channel.send(t+"\n"+msg);
+		let discordMessage = await cmd.channel.send(title + "\n" + msg);
+		options.forEach(async v => {
+			try {
+				await discordMessage.react(v.e);
+			}catch(error) {
+				console.log("Failed '"+v+"'");
+			}
+		});
 
-			e.forEach(async v => {
-				try {
-					await discordMessage.react(v);
-				}catch(error) {
-					console.log("Failed '"+v+"'");
-				}
-			});
-			index ++;
-		}while(options.length > 0);
+		if(anonMode) {
+			let polls:AnonPoll[] = StorageController.getData(cmd.guildId, StorageController.ANON_POLLS);
+			if(!polls) polls = [];
+			polls.push({
+				id: discordMessage.id,
+				chan: discordMessage.channelId,
+				title: title,
+				unique: uniqueMode,
+				opt:options,
+			})
+			StorageController.saveData(cmd.guildId, StorageController.ANON_POLLS, polls);
+		}
+	}
+
+	private async updateAnonPoll(poll:AnonPoll, reaction:Discord.MessageReaction):Promise<void> {
+		let msg = poll.opt.map(option => option.e + " `(x"+option.v.length+")` ➔ "+ option.n ).join("\n");
+		await reaction.message.edit(poll.title + "\n" + msg);
 	}
 }

@@ -13,10 +13,12 @@
     "server/start": "pm2 start bootstrap-pm2.json"
   },
   "dependencies": {
+    "@discordjs/rest": "^0.3.0",
     "concurrently": "^5.3.0",
     "connect-history-api-fallback": "^1.6.0",
     "crypto-js": "^4.0.0",
-    "discord.js": "^13.1.0",
+    "discord-api-types": "^0.22.0",
+    "discord.js": "^13.6.0",
     "express": "^4.17.1",
     "node-fetch": "^2.6.1",
     "sockjs": "^0.3.21"

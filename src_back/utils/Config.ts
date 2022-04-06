@@ -24,6 +24,7 @@ export default class Config {
 	public static get TWITCH_APP_SCOPES():string { return this.getData("TWITCH_APP_SCOPES"); }
 	
 	public static get DISCORDBOT_TOKEN(): string { return this.getData("DISCORDBOT_TOKEN"); }
+	public static get DISCORDBOT_CLIENT_ID(): string { return this.getData("DISCORDBOT_CLIENT_ID"); }
 	public static get DISCORDBOT_REACTION_EMOJIS(): string { return this.getData("DISCORDBOT_REACTION_EMOJIS"); }
 	
 
