@@ -486,8 +486,8 @@ export default class DiscordController extends EventDispatcher {
 			let list = StorageController.getData(cmd.guildId, StorageController.TWITCH_USERS);
 			if(!list) list = [];
 			if(watch) {
-				if(list.findIndex(v=>v.uid==user.id) == -1) {
-					list.push({uid:user.id, login:user.login});
+				if(list.findIndex(v=>v.uid==user.id && v.channel==cmd.channelId) == -1) {
+					list.push({uid:user.id, login:user.login, channel:cmd.channelId});
 				}
 			}else{
 				const index = list.findIndex(v=>v.uid==user.id);
