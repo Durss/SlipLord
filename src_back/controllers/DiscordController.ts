@@ -79,8 +79,7 @@ export default class DiscordController extends EventDispatcher {
 	/**
 	 * Sends a message to warn that a user went live on twitch
 	 */
-	public async alertLiveChannel(uid:string):Promise<void> {
-		console.log("ALERT");
+	public async alertLiveChannel(uid:string, recursive:boolean =false):Promise<void> {
 		clearTimeout(this.refreshTimeouts[uid]);
 		const guilds = this.client.guilds.cache.entries();
 		//Go through all guilds and check where the user should be notified
@@ -103,15 +102,12 @@ export default class DiscordController extends EventDispatcher {
 				let usersStorage:{[key:string]:TwitchLiveMessage} = StorageController.getData("global", StorageController.TWITCH_USERS);
 				if(!usersStorage) usersStorage = {};
 				const messageHistory = usersStorage[historyKey];
-				console.log("Test", messageHistory);
 				//Search for the last message sent by the bot for this user on this channel
-				//and update it if it's not older than 1h
-				if(messageHistory && messageHistory.date > Date.now() - 60 * 60 * 1000) {
-					console.log("Message valid to be edited !");
+				//and update it if it's not older than 30min
+				if(messageHistory && messageHistory.date > Date.now() - 30 * 60 * 1000) {
 					try {
 						editedMessage = await channel.messages.fetch(messageHistory.messageId);
 					}catch(error) {
-						console.log("well..actually..nope !");
 						editedMessage = null;
 					}
 
@@ -139,7 +135,6 @@ export default class DiscordController extends EventDispatcher {
 						let message:Discord.Message;
 						if(editedMessage) {
 							//Edit existing message
-							console.log('Update existing message');
 							message = editedMessage;
 							message = await message.edit({embeds:[card]});
 							
@@ -148,7 +143,6 @@ export default class DiscordController extends EventDispatcher {
 							liveItem.date = Date.now();
 							StorageController.saveData("global", StorageController.TWITCH_USERS, usersStorage);
 						}else{
-							console.log('Post new message');
 							//Send new message
 							message = await channel.send({embeds:[card]});
 
@@ -162,14 +156,14 @@ export default class DiscordController extends EventDispatcher {
 
 						//Schedule message update 1min later
 						this.refreshTimeouts[uid] = setTimeout(_=> {
-							this.alertLiveChannel(uid);
+							this.alertLiveChannel(uid, true);
 						}, 1 * 60 * 1000);
 					}catch(error) {
 						Logger.error("Error while sending message to discord channel " + user.channel);
 						console.log(error);
 					}
 				}else{
-					Logger.error("Channel not found");
+					Logger.error("Twitch allert: channel not found");
 				}
 			}
 		}
