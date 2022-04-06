@@ -11,15 +11,14 @@ export default class Config {
 	private static _CONF_PATH: string = "env.conf";
 	private static _CONFIGS_CACHE:{[key:string]:string} = null;
 	
+	public static TWITCH_API_PATH:string = "https://api.twitch.tv/helix/";
+	
 	public static get BOT_NAME():string { return this.getData("BOT_NAME"); 	}
-	public static get LANGUAGE():AvailableLocales { return this.getData("LANGUAGE") as AvailableLocales; 	}
 
-	public static get TWITCH_LOGIN():string { return this.getData("TWITCH_LOGIN"); 	}
-	public static get TWITCH_USER_ID():string { return this.getData("TWITCH_USER_ID"); }
+	public static get PUBLIC_SECURED_URL():string { return this.getData("PUBLIC_SECURED_URL"); 	}
 	
 	public static get TWITCH_EVENTSUB_SECRET():string { return this.getData("TWITCH_EVENTSUB_SECRET"); 	}
 	public static get TWITCH_APP_CLIENT_ID():string { return this.getData("TWITCH_APP_CLIENT_ID"); 	}
-	public static get PUBLIC_SECURED_URL():string { return this.getData("PUBLIC_SECURED_URL"); 	}
 	public static get TWITCH_APP_CLIENT_SECRET():string { return this.getData("TWITCH_APP_CLIENT_SECRET"); 	}
 	public static get TWITCH_APP_SCOPES():string { return this.getData("TWITCH_APP_SCOPES"); }
 	
@@ -27,9 +26,13 @@ export default class Config {
 	public static get DISCORDBOT_CLIENT_ID(): string { return this.getData("DISCORDBOT_CLIENT_ID"); }
 	public static get DISCORDBOT_REACTION_EMOJIS(): string { return this.getData("DISCORDBOT_REACTION_EMOJIS"); }
 	
+	public static get envName(): string { return this._ENV_NAME;}
 
-	public static get envName(): string {
-		return this._ENV_NAME;
+	public static get IS_TWITCH_CONFIGURED(): boolean {
+		return this.TWITCH_APP_CLIENT_ID?.length > 0
+		&& this.TWITCH_APP_CLIENT_SECRET?.length > 0
+		&& this.TWITCH_EVENTSUB_SECRET?.length > 0
+		&& this.PUBLIC_SECURED_URL?.length > 0;
 	}
 
 	public static get LOGS_ENABLED(): boolean {

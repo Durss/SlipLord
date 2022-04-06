@@ -109,11 +109,14 @@ export default class HTTPServer {
 		});
 		
 		let discord = new DiscordController();
-		if(Config.TWITCH_USER_ID) {
+		if(Config.IS_TWITCH_CONFIGURED) {
 			let eventSub = new EventSubController();
 			await eventSub.mount(this.app);
 			discord.addEventListener(Event.SUB_TO_LIVE_EVENT, (event:Event) => {
 				eventSub.subToUser(event.channelId);
+			});
+			discord.addEventListener(Event.UNSUB_FROM_LIVE_EVENT, (event:Event) => {
+				eventSub.unsubUser(event.channelId);
 			});
 			eventSub.addEventListener(Event.DISCORD_ALERT_LIVE, (event:Event) => {
 				discord.alertLiveChannel(event.channelId);

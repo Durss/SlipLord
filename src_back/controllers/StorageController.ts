@@ -16,6 +16,7 @@ export class StorageController {
 	public static ROLES_CHANNEL:string = "ROLES_CHANNEL";
 	public static ANON_POLLS:string = "ANON_POLLS";
 	public static LANGUAGE:string = "LANGUAGE";
+	public static TWITCH_USERS:string = "TWITCH_USERS";
 	
 	constructor() {
 	}

@@ -40,10 +40,11 @@ export default class EventSubController extends EventDispatcher {
 		if(!callbackUrl) {
 			callbackUrl = Config.PUBLIC_SECURED_URL;
 		}
-		this.url = callbackUrl.replace(/\/+$/gi, "")+"/";
-		
-		if(this.url) {
+		if(callbackUrl) {
+			this.url = callbackUrl.replace(/\/+$/gi, "")+"/";
+
 			this.token = await TwitchUtils.getClientCredentialToken();
+
 			await this.unsubPrevious();
 			// await this.subToUser("647389082");
 			this.onReady();
@@ -56,6 +57,7 @@ export default class EventSubController extends EventDispatcher {
 	 * @param uid	twitch user ID 
 	 */
 	public async subToUser(uid:string):Promise<void> {
+		console.log(this.url);
 		if(!this.url) {
 			Logger.warn("📢 EventSub is missing a callback URI to be initialized !");
 			return;
@@ -115,11 +117,10 @@ export default class EventSubController extends EventDispatcher {
 	/**
 	 * Stops receiving live notifications for a specific user
 	 * 
-	 * @param profile 
 	 * @param uid 
 	 */
-	public unsubUser(profile:string, uid:string):void {
-		this.unsubPrevious(profile, uid);
+	public unsubUser(uid:string):void {
+		this.unsubPrevious(uid);
 	}
 
 
@@ -192,7 +193,7 @@ export default class EventSubController extends EventDispatcher {
 	 * @param uid	specify a user ID to remove a specific event sub
 	 * @returns 
 	 */
-	private async unsubPrevious(profile?:string, uid?:string):Promise<void> {
+	private async unsubPrevious(uid?:string):Promise<void> {
 		this.token = await TwitchUtils.getClientCredentialToken();
 		let opts = {
 			method:"GET",
@@ -230,10 +231,10 @@ export default class EventSubController extends EventDispatcher {
 		//Filtering out only callbacks for current environment
 		let callbacksToClean = list.filter(e => {
 			let include = e.transport.callback.indexOf(this.url) > -1;
-			if(uid && profile) {
+			if(uid) {
 				include =  include
-						&& e.condition.broadcaster_user_id == uid
-						&& e.transport.callback.split("profile=")[1] == profile;
+						&& e.condition.broadcaster_user_id == uid;
+						// && e.transport.callback.split("profile=")[1] == profile;
 			}
 			return include;
 		});

@@ -9,6 +9,7 @@
 export class Event {
 	private _type:string;
 	public static SUB_TO_LIVE_EVENT:string = "SUB_TO_LIVE_EVENT";
+	public static UNSUB_FROM_LIVE_EVENT:string = "UNSUB_FROM_LIVE_EVENT";
 	public static DISCORD_ALERT_LIVE:string = "DISCORD_ALERT_LIVE";
 
 	constructor(type:string, public channelId?:string) {

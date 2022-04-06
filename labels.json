@@ -31,10 +31,17 @@
 			"role_allowed": ":white_check_mark: The role <@&{role}> has been allowed to use admin commands",
 			"role_disallowed": ":x: The role <@&{role}> is not allowed ot use admin commands anymore",
 			"user_allowed": ":white_check_mark: The user <@{user}> has been allowed to use admin commands",
-			"user_disallowed": ":x: The user <@{user}> is not allowed ot use admin commands anymore"
+			"user_disallowed": ":x: The user <@{user}> is not allowed ot use admin commands anymore",
+			"language_updated": ":x: The user <@{user}> is not allowed ot use admin commands anymore"
 		},
 		"poll":{
 			"title":"Create a poll"
+		},
+		"twitch": {
+			"not_configured": ":x: This feature is missing some values in the `config.js` file to work. Fill them in and try again",
+			"user_added": ":white_check_mark: A notification will be sent on this channel when the twitch user **{user}** goes live",
+			"user_removed": ":white_check_mark: The live notifications for the **{user}** are now disabled",
+			"user_notFound": ":x: The twitch user **{user}** does not exists"
 		}
 	},
 	"fr":{
