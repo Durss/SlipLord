@@ -228,28 +228,31 @@ export default class DiscordController extends EventDispatcher {
 			.setDescription('admin a protobud feature')
 			.addSubcommand(subcommand =>
 				subcommand
-					.setName('allow_role')
-					.setDescription('Allows the specified role to use the private commands')
-					.addRoleOption(option => option.setRequired(true).setName('role').setDescription('Role to allow'))
+					.setName('access')
+					.setDescription('Allows the specified role or user to use the private commands')
+					.addRoleOption(option => option.setName('allow_role').setDescription('Role to allow'))
+					.addRoleOption(option => option.setName('disallow_role').setDescription('Role to allow'))
+					.addUserOption(option => option.setName('allow_user').setDescription('User to allow'))
+					.addUserOption(option => option.setName('disallow_user').setDescription('User to allow'))
 			)
-			.addSubcommand(subcommand =>
-				subcommand
-					.setName('disallow_role')
-					.setDescription('Removes a role from the allowed roles to use private commands')
-					.addRoleOption(option => option.setRequired(true).setName('role').setDescription('Role to disallow'))
-			)
-			.addSubcommand(subcommand =>
-				subcommand
-					.setName('allow_user')
-					.setDescription('Allows the specified user to use the private commands')
-					.addUserOption(option => option.setRequired(true).setName('user').setDescription('User to allow'))
-			)
-			.addSubcommand(subcommand =>
-				subcommand
-					.setName('disallow_user')
-					.setDescription('Removes the specified user from the users allowed to use the private commands')
-					.addUserOption(option => option.setRequired(true).setName('user').setDescription('User to disallow'))
-			)
+			// .addSubcommand(subcommand =>
+			// 	subcommand
+			// 		.setName('disallow_role')
+			// 		.setDescription('Removes a role from the allowed roles to use private commands')
+			// 		.addRoleOption(option => option.setRequired(true).setName('role').setDescription('Role to disallow'))
+			// )
+			// .addSubcommand(subcommand =>
+			// 	subcommand
+			// 		.setName('allow_user')
+			// 		.setDescription('Allows the specified user to use the private commands')
+			// 		.addUserOption(option => option.setRequired(true).setName('user').setDescription('User to allow'))
+			// )
+			// .addSubcommand(subcommand =>
+			// 	subcommand
+			// 		.setName('disallow_user')
+			// 		.setDescription('Removes the specified user from the users allowed to use the private commands')
+			// 		.addUserOption(option => option.setRequired(true).setName('user').setDescription('User to disallow'))
+			// )
 			.addSubcommand(subcommand =>
 				subcommand
 					.setName('language')
@@ -463,14 +466,8 @@ export default class DiscordController extends EventDispatcher {
 			action = action.replace(new RegExp("^"+Config.CMD_PREFIX, "i"), "");
 	
 			switch(action) {
-				case "admin/allow_role":
-				case "admin/disallow_role": {
-					this.allowCommandsTo(cmd, ApplicationCommandPermissionTypes.ROLE, action==="admin/allow_role");
-					break;
-				}
-				case "admin/allow_user": 
-				case "admin/disallow_user": {
-					this.allowCommandsTo(cmd, ApplicationCommandPermissionTypes.USER, action==="admin/allow_user");
+				case "admin/access": {
+					this.setAccessTo(cmd);
 					break;
 				}
 	
@@ -713,39 +710,54 @@ export default class DiscordController extends EventDispatcher {
 	}
 
 	/**
-	 * Sends the roles selector on the specified channel
+	 * Gives/remove access to private commandes to a user or a role
 	 */
-	private async allowCommandsTo(cmd:Discord.CommandInteraction, type:ApplicationCommandPermissionTypes, allow:boolean = true):Promise<void> {
+	private async setAccessTo(cmd:Discord.CommandInteraction):Promise<void> {
+		// allow_role
+		// disallow_role
+		// allow_user
+		// disallow_user
 		await cmd.deferReply();
 		let commands = (await cmd.guild.commands.fetch()).toJSON();
 		const lang = this.lang(cmd.guildId);
+
+		//Define update parameters
+		let id:string, allow:boolean, type:ApplicationCommandPermissionTypes;
+		if(cmd.options.get("allow_role")){
+			id = cmd.options.get("allow_role").role.id;
+			allow = true;
+			type = ApplicationCommandPermissionTypes.ROLE;
+		}else if(cmd.options.get("disallow_role")){
+			id = cmd.options.get("disallow_role").role.id;
+			allow = false;
+			type = ApplicationCommandPermissionTypes.ROLE;
+		}else if(cmd.options.get("allow_user")){
+			id = cmd.options.get("allow_user").user.id;
+			allow = true;
+			type = ApplicationCommandPermissionTypes.USER;
+		}else if(cmd.options.get("disallow_user")){
+			id = cmd.options.get("disallow_user").user.id;
+			allow = false;
+			type = ApplicationCommandPermissionTypes.USER;
+		}
+
+		//Update commands
 		for (let i = 0; i < commands.length; i++) {
 			const command = commands[i];
 			if(command.defaultPermission) continue;//If it's a public command, no need to add permissions
-			let id:string;
-			if(type == ApplicationCommandPermissionTypes.ROLE){
-				id = cmd.options.get("role").role.id;
-			}else{
-				id = cmd.options.get("user").user.id;
-			}
-			const permissions = [
-				{
-					id,
-					type,
-					permission: allow,
-				},
-			];
-
+			const permissions = [ { id, type, permission: allow, }, ];
 			await command.permissions.add({ permissions });
-			let message:string ="";
-			if(type == ApplicationCommandPermissionTypes.ROLE){
-				message = Label.get(lang, "admin.role_" + (allow?"allowed":"disallowed"), [{id:"role", value:cmd.options.get("role").role.id}]);
-			}else{
-				message = Label.get(lang, "admin.user_" + (allow?"allowed":"disallowed"), [{id:"user", value:cmd.options.get("user").user.id}]);
-			}
-			cmd.channel.send(message)
-			Logger.success(message);
 		}
+
+		//Confirm update
+		let message:string ="";
+		if(type == ApplicationCommandPermissionTypes.ROLE){
+			message = Label.get(lang, "admin.role_" + (allow?"allowed":"disallowed"), [{id:"role", value:id}]);
+		}else{
+			message = Label.get(lang, "admin.user_" + (allow?"allowed":"disallowed"), [{id:"user", value:id}]);
+		}
+		cmd.channel.send(message)
+		Logger.success(message);
 		const m = await cmd.fetchReply() as Discord.Message;
 		await m.delete();
 	}
