@@ -229,30 +229,12 @@ export default class DiscordController extends EventDispatcher {
 			.addSubcommand(subcommand =>
 				subcommand
 					.setName('access')
-					.setDescription('Allows the specified role or user to use the private commands')
+					.setDescription('Allows or disallows the specified role or user to use the private commands')
 					.addRoleOption(option => option.setName('allow_role').setDescription('Role to allow'))
 					.addRoleOption(option => option.setName('disallow_role').setDescription('Role to allow'))
 					.addUserOption(option => option.setName('allow_user').setDescription('User to allow'))
 					.addUserOption(option => option.setName('disallow_user').setDescription('User to allow'))
 			)
-			// .addSubcommand(subcommand =>
-			// 	subcommand
-			// 		.setName('disallow_role')
-			// 		.setDescription('Removes a role from the allowed roles to use private commands')
-			// 		.addRoleOption(option => option.setRequired(true).setName('role').setDescription('Role to disallow'))
-			// )
-			// .addSubcommand(subcommand =>
-			// 	subcommand
-			// 		.setName('allow_user')
-			// 		.setDescription('Allows the specified user to use the private commands')
-			// 		.addUserOption(option => option.setRequired(true).setName('user').setDescription('User to allow'))
-			// )
-			// .addSubcommand(subcommand =>
-			// 	subcommand
-			// 		.setName('disallow_user')
-			// 		.setDescription('Removes the specified user from the users allowed to use the private commands')
-			// 		.addUserOption(option => option.setRequired(true).setName('user').setDescription('User to disallow'))
-			// )
 			.addSubcommand(subcommand =>
 				subcommand
 					.setName('language')
@@ -263,20 +245,10 @@ export default class DiscordController extends EventDispatcher {
 		const twitch = new SlashCommandBuilder()
 			.setDefaultPermission(false)
 			.setName(Config.CMD_PREFIX+'twitch')
-			.setDescription('Enable or disable tiwtch live notifications')
-			.addSubcommand(subcommand =>
-				subcommand
-					.setName('watch')
-					.setDescription('Get notified when a twitch channel goes live by sending a card on this channel')
-					.addStringOption(option => option.setRequired(true).setName('twitch_login').setDescription('The twitch login of the channel to add'))
-			)
-			.addSubcommand(subcommand =>
-				subcommand
-					.setName('unwatch')
-					.setDescription('Stop getting notified when a twitch channel goes live')
-					.addStringOption(option => option.setRequired(true).setName('twitch_login').setDescription('The twitch login of the channel to stop watching'))
-			)
-				
+			.setDescription('Enable or disable twitch live notifications')
+			.addStringOption(option => option.setRequired(false).setName('watch_login').setDescription('The twitch login of the channel to start watching'))
+			.addStringOption(option => option.setRequired(false).setName('unwatch_login').setDescription('The twitch login of the channel to stop watching'))
+		
 		const poll = new SlashCommandBuilder()
 			.setName(Config.CMD_PREFIX+'poll')
 			.setDescription('Create a poll')
@@ -470,16 +442,6 @@ export default class DiscordController extends EventDispatcher {
 					this.setAccessTo(cmd);
 					break;
 				}
-	
-				case "roles_selector": {
-					await this.sendRolesSelector(cmd);
-					break;
-				}
-				
-				case "twitch/watch": 
-				case "twitch/unwatch": {
-					return this.twitchLiveAlertChannel(cmd, action==="twitch/watch");
-				}
 				
 				case "admin/language": {
 					await cmd.deferReply({ephemeral:true});
@@ -487,6 +449,15 @@ export default class DiscordController extends EventDispatcher {
 					StorageController.saveData(cmd.guildId, StorageController.LANGUAGE, lang);
 					cmd.editReply(Label.get(lang, "admin.language_updated"));
 					break;
+				}
+	
+				case "roles_selector": {
+					await this.sendRolesSelector(cmd);
+					break;
+				}
+				
+				case "twitch": {
+					return this.twitchLiveAlertChannel(cmd);
 				}
 				
 				case "poll": {
@@ -500,13 +471,19 @@ export default class DiscordController extends EventDispatcher {
 	/**
 	 * Start watching for a twitch user to go live
 	 */
-	private async twitchLiveAlertChannel(cmd:Discord.CommandInteraction, watch:boolean):Promise<void> {
+	private async twitchLiveAlertChannel(cmd:Discord.CommandInteraction):Promise<void> {
+		let watch:boolean = false;
+		let key = "unwatch_login";
+		if(cmd.options.get("watch_login")) {
+			watch = true;
+			key = "watch_login";
+		}
 		const lang = this.lang(cmd.guildId);
 		if(!Config.IS_TWITCH_CONFIGURED) {
 			cmd.reply({content:Label.get(lang, "twitch.not_configured"), ephemeral:true});
 			return;
 		}
-		const user = cmd.options.get("twitch_login").value as string;
+		const user = cmd.options.get(key).value as string;
 		const userRes = await TwitchUtils.loadChannelsInfo([user]);
 		if(userRes.length>0) {
 			const user = userRes[0];
@@ -540,7 +517,6 @@ export default class DiscordController extends EventDispatcher {
 	 */
 	private async onMessage(message:Discord.Message):Promise<void> {
 		// console.log("Message received : ", message.author.bot, message.channel.type, message.content);
-		
 		if (message.author.bot) return;
 		if (message.channel.type == "DM") return;
 		
@@ -713,10 +689,6 @@ export default class DiscordController extends EventDispatcher {
 	 * Gives/remove access to private commandes to a user or a role
 	 */
 	private async setAccessTo(cmd:Discord.CommandInteraction):Promise<void> {
-		// allow_role
-		// disallow_role
-		// allow_user
-		// disallow_user
 		await cmd.deferReply();
 		let commands = (await cmd.guild.commands.fetch()).toJSON();
 		const lang = this.lang(cmd.guildId);
