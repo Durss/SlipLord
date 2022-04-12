@@ -335,6 +335,13 @@ export default class DiscordController extends EventDispatcher {
 					cmd.editReply(Label.get(lang, "admin.language_updated"));
 					break;
 				}
+				
+				case "admin/birthday_target": {
+					await cmd.deferReply({ephemeral:true});
+					StorageController.saveData(cmd.guildId, StorageController.BIRTHDAY_CHANNEL, cmd.channelId);
+					cmd.editReply(Label.get(lang, "admin.birthday_chan_ok"));
+					break;
+				}
 	
 				case "roles_selector": {
 					await this.sendRolesSelector(cmd);
@@ -475,13 +482,15 @@ export default class DiscordController extends EventDispatcher {
 	private async sendInstallCard(message:Discord.Message):Promise<void> {
 		const lang = this.lang(message.guildId);
 
+		
 		const listItems:Discord.MessageSelectOptionData[] = [];
-		listItems.push( { label: "all", value: "all", description:"install all available commands" } );
-		listItems.push( { label: "Admin commands", value: "admin_commands", description:"Install only admin commands" } );
-		listItems.push( { label: "Roles selector", value: "roles_selector", description:"Allow to add a role selector" } );
-		listItems.push( { label: "Twitch live", value: "twitch_live", description:"Allow to un/subscribe to a twitch channel live events" } );
-		listItems.push( { label: "Poll", value: "poll", description:"Allow to create a poll" } );
-		listItems.push( { label: "Remove all", value: "remove_all", description:"Uninstall all commands" } );
+		listItems.push( { label: Label.get(lang, "admin.install.all.label"),		value: "all",				description:Label.get(lang, "admin.install.all.description") } );
+		listItems.push( { label: Label.get(lang, "admin.install.admin.label"),		value: "admin_commands",	description:Label.get(lang, "admin.install.admin.description") } );
+		listItems.push( { label: Label.get(lang, "admin.install.roles.label"),		value: "roles_selector",	description:Label.get(lang, "admin.install.roles.description") } );
+		listItems.push( { label: Label.get(lang, "admin.install.twitch.label"),		value: "twitch_live",		description:Label.get(lang, "admin.install.twitch.description") } );
+		listItems.push( { label: Label.get(lang, "admin.install.poll.label"),		value: "poll",				description:Label.get(lang, "admin.install.poll.description") } );
+		listItems.push( { label: Label.get(lang, "admin.install.birthday.label"),	value: "birthday",			description:Label.get(lang, "admin.install.birthday.description") } );
+		listItems.push( { label: Label.get(lang, "admin.install.remove.label"),		value: "remove_all",		description:Label.get(lang, "admin.install.remove.description") } );
 
 		const list = new Discord.MessageSelectMenu()
 			.setCustomId('install_selector')
@@ -506,93 +515,74 @@ export default class DiscordController extends EventDispatcher {
 			const l = locales[i];
 			langChoices.push([l.name, l.id]);
 		}
+
+		const lang = this.lang(guild.id);
 		
 		const roles = new SlashCommandBuilder()
 			.setDefaultPermission(false)
 			.setName(Config.CMD_PREFIX+'roles_selector')
-			.setDescription('Adds a role selector with the specified roles or all if no roles are specified')
-			.addRoleOption(option => option.setName('role1').setDescription('role N°1'))
-			.addRoleOption(option => option.setName('role2').setDescription('role N°2'))
-			.addRoleOption(option => option.setName('role3').setDescription('role N°3'))
-			.addRoleOption(option => option.setName('role4').setDescription('role N°4'))
-			.addRoleOption(option => option.setName('role5').setDescription('role N°5'))
-			.addRoleOption(option => option.setName('role6').setDescription('role N°6'))
-			.addRoleOption(option => option.setName('role7').setDescription('role N°7'))
-			.addRoleOption(option => option.setName('role8').setDescription('role N°8'))
-			.addRoleOption(option => option.setName('role9').setDescription('role N°9'))
-			.addRoleOption(option => option.setName('role10').setDescription('role N°10'))
-			.addRoleOption(option => option.setName('role11').setDescription('role N°11'))
-			.addRoleOption(option => option.setName('role12').setDescription('role N°12'))
-			.addRoleOption(option => option.setName('role13').setDescription('role N°13'))
-			.addRoleOption(option => option.setName('role14').setDescription('role N°14'))
-			.addRoleOption(option => option.setName('role15').setDescription('role N°15'))
-			.addRoleOption(option => option.setName('role16').setDescription('role N°16'))
-			.addRoleOption(option => option.setName('role17').setDescription('role N°17'))
-			.addRoleOption(option => option.setName('role18').setDescription('role N°18'))
-			.addRoleOption(option => option.setName('role19').setDescription('role N°19'))
-			.addRoleOption(option => option.setName('role20').setDescription('role N°20'));
+			.setDescription(Label.get(lang, "commands.role_selector.description"))
+		for (let i = 1; i <= 20; i++) {
+			roles.addStringOption(option => option.setName('role'+i).setDescription(Label.get(lang, "commands.role_selector.role", [{id:"X", value:i.toString()}])))
+		}
 		
 		const admin = new SlashCommandBuilder()
 			.setDefaultPermission(false)
 			.setName(Config.CMD_PREFIX+'admin')
-			.setDescription('admin a protobud feature')
+			.setDescription(Label.get(lang, "commands.admin.description"))
 			.addSubcommand(subcommand =>
 				subcommand
 					.setName('access')
-					.setDescription('Allows or disallows the specified role or user to use the private commands')
-					.addRoleOption(option => option.setName('allow_role').setDescription('Role to allow'))
-					.addRoleOption(option => option.setName('disallow_role').setDescription('Role to allow'))
-					.addUserOption(option => option.setName('allow_user').setDescription('User to allow'))
-					.addUserOption(option => option.setName('disallow_user').setDescription('User to allow'))
+					.setDescription(Label.get(lang, "commands.admin.access.description"))
+					.addRoleOption(option => option.setName('allow_role').setDescription(Label.get(lang, "commands.admin.access.allow_user")))
+					.addRoleOption(option => option.setName('disallow_role').setDescription(Label.get(lang, "commands.admin.access.disallow_user")))
+					.addUserOption(option => option.setName('allow_user').setDescription(Label.get(lang, "commands.admin.access.allow_role")))
+					.addUserOption(option => option.setName('disallow_user').setDescription(Label.get(lang, "commands.admin.access.disallow_role")))
 			)
 			.addSubcommand(subcommand =>
 				subcommand
 					.setName('language')
-					.setDescription('Change the bot\'s language')
-					.addStringOption(option => option.setRequired(true).setName('lang').setDescription('Language to use').addChoices(langChoices))
+					.setDescription(Label.get(lang, "commands.admin.language.description"))
+					.addStringOption(option => option.setRequired(true).setName('lang').setDescription(Label.get(lang, "commands.admin.language.param")).addChoices(langChoices))
+			)
+			.addSubcommand(subcommand =>
+				subcommand
+					.setName('birthday_target')
+					.setDescription(Label.get(lang, "commands.admin.birthday"))
 			);
 
 		const twitch = new SlashCommandBuilder()
 			.setDefaultPermission(false)
 			.setName(Config.CMD_PREFIX+'twitch')
-			.setDescription('Enable or disable twitch live notifications')
-			.addStringOption(option => option.setRequired(false).setName('watch_login').setDescription('The twitch login of the channel to start watching'))
-			.addStringOption(option => option.setRequired(false).setName('unwatch_login').setDescription('The twitch login of the channel to stop watching'))
+			.setDescription(Label.get(lang, "commands.admin.twitch.description"))
+			.addStringOption(option => option.setRequired(false).setName('watch_login').setDescription(Label.get(lang, "commands.admin.twitch.watch")))
+			.addStringOption(option => option.setRequired(false).setName('unwatch_login').setDescription(Label.get(lang, "commands.admin.twitch.unwatch")))
 		
 		const poll = new SlashCommandBuilder()
 			.setName(Config.CMD_PREFIX+'poll')
-			.setDescription('Create a poll')
-			.addStringOption(option => option.setRequired(true).setName('title').setDescription('Title of the poll'))
-			.addStringOption(option => option.setRequired(true).setName('option1').setDescription('Name of the first option'))
-			.addStringOption(option => option.setRequired(true).setName('option2').setDescription('Name of the second option'))
-			.addBooleanOption(option => option.setName('anonvotes').setDescription('Should votes be anonnymous?'))
-			.addBooleanOption(option => option.setName('unique').setDescription('Can user vote for only one option? (only works if anonvotes is true)'))
-			.addStringOption(option => option.setName('option3').setDescription('Name of the third option'))
-			.addStringOption(option => option.setName('option4').setDescription('Name of the option 4'))
-			.addStringOption(option => option.setName('option5').setDescription('Name of the option 5'))
-			.addStringOption(option => option.setName('option6').setDescription('Name of the option 6'))
-			.addStringOption(option => option.setName('option7').setDescription('Name of the option 7'))
-			.addStringOption(option => option.setName('option8').setDescription('Name of the option 8'))
-			.addStringOption(option => option.setName('option9').setDescription('Name of the option 9'))
-			.addStringOption(option => option.setName('option10').setDescription('Name of the option 10'))
-			.addStringOption(option => option.setName('option11').setDescription('Name of the option 11'))
-			.addStringOption(option => option.setName('option12').setDescription('Name of the option 12'))
-			.addStringOption(option => option.setName('option13').setDescription('Name of the option 13'))
-			.addStringOption(option => option.setName('option14').setDescription('Name of the option 14'))
-			.addStringOption(option => option.setName('option15').setDescription('Name of the option 15'))
-			.addStringOption(option => option.setName('option16').setDescription('Name of the option 16'))
-			.addStringOption(option => option.setName('option17').setDescription('Name of the option 17'))
-			.addStringOption(option => option.setName('option18').setDescription('Name of the option 18'))
-			.addStringOption(option => option.setName('option19').setDescription('Name of the option 19'))
-			.addStringOption(option => option.setName('option20').setDescription('Name of the option 20'))
+			.setDescription(Label.get(lang, "commands.poll.description"))
+			.addStringOption(option => option.setRequired(true).setName('title').setDescription(Label.get(lang, "commands.poll.title")))
+			.addStringOption(option => option.setRequired(true).setName('option1').setDescription(Label.get(lang, "commands.poll.option", [{id:"X", value:"1"}])))
+			.addStringOption(option => option.setRequired(true).setName('option2').setDescription(Label.get(lang, "commands.poll.option", [{id:"X", value:"2"}])))
+			.addBooleanOption(option => option.setName('anonvotes').setDescription(Label.get(lang, "commands.poll.anon")))
+			.addBooleanOption(option => option.setName('unique').setDescription(Label.get(lang, "commands.poll.unique")));
+		for (let i = 3; i <= 20; i++) {
+			poll.addStringOption(option => option.setName('option'+i).setDescription(Label.get(lang, "commands.poll.option", [{id:"X", value:i.toString()}])))
+		}
 
-		
+		const birthday = new SlashCommandBuilder()
+			.setDefaultPermission(false)
+			.setName(Config.CMD_PREFIX+'birthday')
+			.setDescription(Label.get(lang, "commands.birthday.description"))
+			.addStringOption(option => option.setRequired(true).setName('date').setDescription(Label.get(lang, "commands.birthday.option")))
+
 		const list = [];
 		const all =  cmd.values.indexOf("all") > -1;
 		if(all || cmd.values.indexOf("poll") > -1)				list.push(poll.toJSON());
 		if(all || cmd.values.indexOf("admin_commands") > -1)	list.push(admin.toJSON());
 		if(all || cmd.values.indexOf("roles_selector") > -1)	list.push(roles.toJSON());
 		if(all || cmd.values.indexOf("twitch_live") > -1)		list.push(twitch.toJSON());
+		if(all || cmd.values.indexOf("birthday") > -1)			list.push(birthday.toJSON());
 		console.log("Adding ", list.length, " commands");
 		
 		await this.rest.put(

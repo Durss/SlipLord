@@ -4,18 +4,79 @@
 		"admin":{
 			"install": {
 				"intro":"Select the commands you'd like to install for this Discord server on the list bellow",
-				"selector_placeholder":"Select one or multiple entries"
+				"selector_placeholder":"Select one or multiple entries",
+				"all": {
+					"label":"Install all",
+					"description":"Install all available commands"
+				},
+				"admin": {
+					"label":"Admin commands",
+					"description":"Install admin commands"
+				},
+				"roles": {
+					"label":"Roles selector",
+					"description":"Allow to add a role selector"
+				},
+				"twitch": {
+					"label":"Twitch live alerts",
+					"description":"Allow to un/subscribe to a twitch channel live events"
+				},
+				"poll": {
+					"label":"Create polls",
+					"description":"Allow members to create a poll"
+				},
+				"birthday": {
+					"label":"Birthday alerts",
+					"description":"Allow members to set their birthdate to get notified"
+				},
+				"remove": {
+					"label":"Remove all",
+					"description":"Uninstall all commands"
+				}
 			},
 			"role_allowed": ":white_check_mark: The role <@&{role}> has been allowed to use admin commands",
 			"role_disallowed": ":x: The role <@&{role}> is not allowed to use admin commands anymore",
 			"user_allowed": ":white_check_mark: The user <@{user}> has been allowed to use admin commands",
 			"user_disallowed": ":x: The user <@{user}> is not allowed to use admin commands anymore",
-			"language_updated": ":white_check_mark: The language has been updated"
+			"language_updated": ":white_check_mark: The language has been updated",
+			"birthday_chan_ok": ":white_check_mark: Birthday notifications will be sent on this channel"
 		},
-		"live": {
-			"add_ok":"The Twitch live alert bot has been properly configured on the channel #{channel}",
-			"del_ok":"The Twitch live alert bot has been properly removed from the channel #{channel}",
-			"ko":"Only an administrator can use this command"
+		"commands": {
+			"role_selector": {
+				"description": "Adds a role selector with the specified roles or all if no roles are specified",
+				"role": "Role N°{X}"
+			},
+			"admin": {
+				"description": "admin a protobud feature",
+				"access": {
+					"description":"Allows or disallows the specified role or user to use the private commands",
+					"allow_role":"Role to allow",
+					"disallow_role":"Role to disallow",
+					"allow_user":"User to allow",
+					"disallow_user":"'User to disallow"
+				},
+				"language": {
+					"description":"Change the bot's language",
+					"param": "Language to use"
+				},
+				"birthday": "Defines this channel as the target for the birthday notifications",
+				"twitch": {
+					"description": "Enable or disable twitch live notifications",
+					"watch": "The twitch login of the channel to start watching",
+					"unwatch": "The twitch login of the channel to stop watching"
+				}
+			},
+			"birthday": {
+				"description": "Set your birthdate to get notified on this channel",
+				"option": "DD-MM"
+			},
+			"poll": {
+				"description": "Create a poll",
+				"title": "Title of the poll",
+				"anon": "Should votes be anonnymous?",
+				"unique": "Can user vote for only one option? (only works if anonvotes is true)",
+				"option": "Option N°{X}"
+			}
 		},
 		"roles": {
 			"intro":"Open the selector bellow and select all the roles you want",
@@ -55,18 +116,79 @@
 		"admin":{
 			"install": {
 				"intro":"Sélectionne les commandes que tu souhaites installer sur ce serveur Discord dans la liste ci-dessous",
-				"selector_placeholder":"Selectionne une ou plusieurs entrées"
+				"selector_placeholder":"Selectionne une ou plusieurs entrées",
+				"all": {
+					"label":"Tout installer",
+					"description":"Installer toutes les commandes disponibles"
+				},
+				"admin": {
+					"label":"Commandes d'admin",
+					"description":"Installer les commandes d'admin"
+				},
+				"roles": {
+					"label":"Sélecteur de rôles",
+					"description":"Permettre d'ajouter un sélecteur de rôle dans un chan"
+				},
+				"twitch": {
+					"label":"Alertes de live Twitch",
+					"description":"Permettre d'activer/désactiver des alertes de live Twitch"
+				},
+				"poll": {
+					"label":"Créer des sondages",
+					"description":"Permettre aux membres de créer des sondages"
+				},
+				"birthday": {
+					"label":"Alertes d'anniversaires",
+					"description":"Permettre aux membre de définir leur anniversaire pour en recevoir des alertes"
+				},
+				"remove": {
+					"label":"Tout supprimer",
+					"description":"Supprimer toutes les commandes installées"
+				}
 			},
 			"role_allowed": ":white_check_mark: Le rôle <@&{role}> est maintenant autorisé à utiliser les commandes d'admin",
 			"role_disallowed": ":x: Le rôle <@&{role}> n'est plus autorisé à utiliser les commandes d'admin",
 			"user_allowed": ":white_check_mark: <@{user}> peut maintenant utiliser les commandes d'admin",
 			"user_disallowed": ":x: <@{user}> n'est plus autorisé à utiliser les commandes d'admin",
-			"language_updated": ":white_check_mark: Le langage a bien été mis à jour"
+			"language_updated": ":white_check_mark: La langue a bien été mise à jour",
+			"birthday_chan_ok": ":white_check_mark: Les anniversaires des membres seront annoncés dans ce channel"
 		},
-		"live": {
-			"add_ok":"Le bot d'alertes de live a bien été configuré sur le channel #{channel}",
-			"del_ok":"Le bot d'alertes de live a bien été supprimé du channel #{channel}",
-			"ko":"Seul un Administrateur peut utiliser cette commande"
+		"commands": {
+			"role_selector": {
+				"description": "Ajoute un sélecteur de rôles dans le channel courant avec les rôles spécifiés",
+				"role": "Rôle N°{X}"
+			},
+			"admin": {
+				"description": "Commande d'administration",
+				"access": {
+					"description":"Ajoute ou retire la possibilité d'utiliser les commandes d'admin à un rôle ou un·e utilisateur·ice",
+					"allow_role":"Rôle à autoriser",
+					"disallow_role":"Rôle à exclure",
+					"allow_user":"Membre à autoriser",
+					"disallow_user":"Membre à exclure"
+				},
+				"language": {
+					"description":"Change la langue du bot",
+					"param": "Langage à utiliser"
+				},
+				"birthday": "Définit ce channel comme le cible des annonces d'anniversaires",
+				"twitch": {
+					"description": "Active ou désactive les notifications de live twitch",
+					"watch": "Login Twitch dont annoncer les lives",
+					"unwatch": "Login Twitch dont arrêter les notifications"
+				}
+			},
+			"birthday": {
+				"description": "Définis ta date d'anniversaire",
+				"option": "JJ-MM"
+			},
+			"poll": {
+				"description": "Créer un sondage",
+				"title": "Titre du sondage",
+				"anon": "Votes anonymes ?",
+				"unique": "Autoriser 1 vote max/personne ? (ne fonctionne qu'en mode anonyme)",
+				"option": "Option N°{X}"
+			}
 		},
 		"roles": {
 			"intro":"Pour t'attribuer un rôle clic sur la réaction correspondante :",
