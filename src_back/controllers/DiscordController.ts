@@ -22,7 +22,8 @@ export default class DiscordController extends EventDispatcher {
 	private lastStreamInfos:{[key:string]:TwitchTypes.StreamInfo} = {};
 	private refreshTimeouts:{[key:string]:any} = {};
 
-	private MAX_LIST_ITEMS:number = 25;//maximum reactions per message allowed by discord
+	private MAX_LIST_ITEMS:number = 25;//maximum items per list allowed by discord
+	private rest = new REST({ version: '9' }).setToken(Config.DISCORDBOT_TOKEN);
 	
 	
 	constructor() {
@@ -62,7 +63,7 @@ export default class DiscordController extends EventDispatcher {
 		//Called when a new member joins the server
 		this.client.on("guildMemberAdd", (member) => this.onAddMember(member))
 		//Called when bot is added to a new discord
-		this.client.on("guildCreate", (guild) => this.createCommands(guild) );
+		// this.client.on("guildCreate", (guild) => this.installCommands(guild) );
 		//Called when bot is kicked out a discord
 		this.client.on("guildDelete", (guild) => StorageController.deleteStore(guild.id) );
 
@@ -72,8 +73,21 @@ export default class DiscordController extends EventDispatcher {
 			Logger.error("Invalid discord token !");
 			console.log(error);
 		}
-		this.createCommands();
 		this.listenForReactions();
+
+		/*
+		//Add commands to all guilds the bot is installed on
+		const guilds = this.client.guilds.cache.entries();
+		do {
+			//Add commands to current guild
+			const guildLocal = guilds.next();
+			if(guildLocal.done) break;
+
+			//If adding command to one specific discord, ignore the others
+			this.installCommands(guildLocal.value[1]);
+		}while(true);
+		Logger.success("Commands added to all guilds");
+		//*/
 	}
 
 	/**
@@ -185,143 +199,6 @@ export default class DiscordController extends EventDispatcher {
 	}
 
 	/**
-	 * Creates the bot's commands and add them to all the guilds
-	 */
-	private async createCommands(guild?:Discord.Guild):Promise<void> {
-		const rest = new REST({ version: '9' }).setToken(Config.DISCORDBOT_TOKEN);
-		const langChoices = [];
-		const locales = Label.getLocales();
-		for (let i = 0; i < locales.length; i++) {
-			const l = locales[i];
-			langChoices.push([l.name, l.id]);
-		}
-		
-		const roles = new SlashCommandBuilder()
-			.setDefaultPermission(false)
-			.setName(Config.CMD_PREFIX+'roles_selector')
-			.setDescription('Adds a role selector with the specified roles or all if no roles are specified')
-			.addRoleOption(option => option.setName('role1').setDescription('role N°1'))
-			.addRoleOption(option => option.setName('role2').setDescription('role N°2'))
-			.addRoleOption(option => option.setName('role3').setDescription('role N°3'))
-			.addRoleOption(option => option.setName('role4').setDescription('role N°4'))
-			.addRoleOption(option => option.setName('role5').setDescription('role N°5'))
-			.addRoleOption(option => option.setName('role6').setDescription('role N°6'))
-			.addRoleOption(option => option.setName('role7').setDescription('role N°7'))
-			.addRoleOption(option => option.setName('role8').setDescription('role N°8'))
-			.addRoleOption(option => option.setName('role9').setDescription('role N°9'))
-			.addRoleOption(option => option.setName('role10').setDescription('role N°10'))
-			.addRoleOption(option => option.setName('role11').setDescription('role N°11'))
-			.addRoleOption(option => option.setName('role12').setDescription('role N°12'))
-			.addRoleOption(option => option.setName('role13').setDescription('role N°13'))
-			.addRoleOption(option => option.setName('role14').setDescription('role N°14'))
-			.addRoleOption(option => option.setName('role15').setDescription('role N°15'))
-			.addRoleOption(option => option.setName('role16').setDescription('role N°16'))
-			.addRoleOption(option => option.setName('role17').setDescription('role N°17'))
-			.addRoleOption(option => option.setName('role18').setDescription('role N°18'))
-			.addRoleOption(option => option.setName('role19').setDescription('role N°19'))
-			.addRoleOption(option => option.setName('role20').setDescription('role N°20'));
-		
-		const admin = new SlashCommandBuilder()
-		
-			.setDefaultPermission(false)
-			.setName(Config.CMD_PREFIX+'admin')
-			.setDescription('admin a protobud feature')
-			.addSubcommand(subcommand =>
-				subcommand
-					.setName('access')
-					.setDescription('Allows or disallows the specified role or user to use the private commands')
-					.addRoleOption(option => option.setName('allow_role').setDescription('Role to allow'))
-					.addRoleOption(option => option.setName('disallow_role').setDescription('Role to allow'))
-					.addUserOption(option => option.setName('allow_user').setDescription('User to allow'))
-					.addUserOption(option => option.setName('disallow_user').setDescription('User to allow'))
-			)
-			.addSubcommand(subcommand =>
-				subcommand
-					.setName('language')
-					.setDescription('Change the bot\'s language')
-					.addStringOption(option => option.setRequired(true).setName('lang').setDescription('Language to use').addChoices(langChoices))
-			);
-
-		const twitch = new SlashCommandBuilder()
-			.setDefaultPermission(false)
-			.setName(Config.CMD_PREFIX+'twitch')
-			.setDescription('Enable or disable twitch live notifications')
-			.addStringOption(option => option.setRequired(false).setName('watch_login').setDescription('The twitch login of the channel to start watching'))
-			.addStringOption(option => option.setRequired(false).setName('unwatch_login').setDescription('The twitch login of the channel to stop watching'))
-		
-		const poll = new SlashCommandBuilder()
-			.setName(Config.CMD_PREFIX+'poll')
-			.setDescription('Create a poll')
-			.addStringOption(option => option.setRequired(true).setName('title').setDescription('Title of the poll'))
-			.addStringOption(option => option.setRequired(true).setName('option1').setDescription('Name of the first option'))
-			.addStringOption(option => option.setRequired(true).setName('option2').setDescription('Name of the second option'))
-			.addBooleanOption(option => option.setName('anonvotes').setDescription('Should votes be anonnymous?'))
-			.addBooleanOption(option => option.setName('unique').setDescription('Can user vote for only one option? (only works if anonvotes is true)'))
-			.addStringOption(option => option.setName('option3').setDescription('Name of the third option'))
-			.addStringOption(option => option.setName('option4').setDescription('Name of the option 4'))
-			.addStringOption(option => option.setName('option5').setDescription('Name of the option 5'))
-			.addStringOption(option => option.setName('option6').setDescription('Name of the option 6'))
-			.addStringOption(option => option.setName('option7').setDescription('Name of the option 7'))
-			.addStringOption(option => option.setName('option8').setDescription('Name of the option 8'))
-			.addStringOption(option => option.setName('option9').setDescription('Name of the option 9'))
-			.addStringOption(option => option.setName('option10').setDescription('Name of the option 10'))
-			.addStringOption(option => option.setName('option11').setDescription('Name of the option 11'))
-			.addStringOption(option => option.setName('option12').setDescription('Name of the option 12'))
-			.addStringOption(option => option.setName('option13').setDescription('Name of the option 13'))
-			.addStringOption(option => option.setName('option14').setDescription('Name of the option 14'))
-			.addStringOption(option => option.setName('option15').setDescription('Name of the option 15'))
-			.addStringOption(option => option.setName('option16').setDescription('Name of the option 16'))
-			.addStringOption(option => option.setName('option17').setDescription('Name of the option 17'))
-			.addStringOption(option => option.setName('option18').setDescription('Name of the option 18'))
-			.addStringOption(option => option.setName('option19').setDescription('Name of the option 19'))
-			.addStringOption(option => option.setName('option20').setDescription('Name of the option 20'))
-
-		//Add commands to all guilds the bot has been added to
-		const guilds = this.client.guilds.cache.entries();
-		do {
-			//Add commands to current guild
-			const guildLocal = guilds.next();
-			if(guildLocal.done) break;
-
-			//If adding command to one specific discord, ignore the others
-			if(guild && guild.id != guildLocal.value[0]) continue;
-
-			await rest.put(
-				Routes.applicationGuildCommands(Config.DISCORDBOT_CLIENT_ID, guildLocal.value[0]),
-				{ body: [poll.toJSON(), admin.toJSON(), roles.toJSON(), twitch.toJSON()] },
-			);
-			
-			//Allow admins to use all commands
-			const guildItem:Discord.Guild = guildLocal.value[1];
-			let members = await guildItem.members.fetch();
-			let commands = (await guildItem.commands.fetch()).toJSON();
-			const admins = members.filter(v => v.permissions.has("ADMINISTRATOR")).toJSON();
-			
-			for (let h = 0; h < admins.length; h++) {
-				const admin = admins[h];
-				
-				for (let i = 0; i < commands.length; i++) {
-					const command = commands[i];
-					if(command.defaultPermission) continue;//If it's a public command, no need to add permissions
-					//Remove all users
-					// const perms = command.permissions;
-					// await perms.remove({users: members.map(v=>v.user.id)});
-					const permissions = [
-						{
-							id: admin.user.id,
-							type: ApplicationCommandPermissionTypes.USER,
-							permission: true,
-						},
-					];
-
-					await command.permissions.add({ permissions });
-				}
-			}
-		}while(true);
-		Logger.success("Commands added to all guilds");
-	}
-
-	/**
 	 * Listens for reactions on anon polls.
 	 * When server reboots all reaction events are lost, we need
 	 * to subscribe back manually
@@ -404,6 +281,13 @@ export default class DiscordController extends EventDispatcher {
 			const cmd = interaction as Discord.SelectMenuInteraction;
 			let action = cmd.customId;
 			switch(action) {
+				case "install_selector":{
+					interaction.deferUpdate();
+					await this.installCommands(cmd.guild, cmd);
+					//Reset menu selection
+					await interaction.editReply({ content: interaction.message.content});
+					break;
+				}
 				case "role_selector":{
 					interaction.deferUpdate();
 					for (let i = 0; i < cmd.values.length; i++) {
@@ -411,7 +295,7 @@ export default class DiscordController extends EventDispatcher {
 					}
 					
 					//Reset selection
-					await interaction.editReply({ content: Label.get(lang, "roles.intro") });
+					await interaction.editReply({ content: interaction.message.content });
 
 					//Confirm roles update
 					const answer = await interaction.channel.send(Label.get(lang, "roles.add_ok", [{id:"user", value:user.id}]));
@@ -436,6 +320,7 @@ export default class DiscordController extends EventDispatcher {
 			}catch(error) {}
 			
 			action = action.replace(new RegExp("^"+Config.CMD_PREFIX, "i"), "");
+			console.log(action);
 	
 			switch(action) {
 				case "admin/access": {
@@ -469,48 +354,6 @@ export default class DiscordController extends EventDispatcher {
 	}
 
 	/**
-	 * Start watching for a twitch user to go live
-	 */
-	private async twitchLiveAlertChannel(cmd:Discord.CommandInteraction):Promise<void> {
-		let watch:boolean = false;
-		let key = "unwatch_login";
-		if(cmd.options.get("watch_login")) {
-			watch = true;
-			key = "watch_login";
-		}
-		const lang = this.lang(cmd.guildId);
-		if(!Config.IS_TWITCH_CONFIGURED) {
-			cmd.reply({content:Label.get(lang, "twitch.not_configured"), ephemeral:true});
-			return;
-		}
-		const user = cmd.options.get(key).value as string;
-		const userRes = await TwitchUtils.loadChannelsInfo([user]);
-		if(userRes.length>0) {
-			const user = userRes[0];
-			let list = StorageController.getData(cmd.guildId, StorageController.TWITCH_USERS);
-			if(!list) list = [];
-			if(watch) {
-				if(list.findIndex(v=>v.uid==user.id && v.channel==cmd.channelId) == -1) {
-					list.push({uid:user.id, login:user.login, channel:cmd.channelId});
-				}
-			}else{
-				const index = list.findIndex(v=>v.uid==user.id);
-				if(index > -1) list.splice(index, 1);
-			}
-			StorageController.saveData(cmd.guildId, StorageController.TWITCH_USERS, list);
-			if(watch) {
-				cmd.reply({content:Label.get(lang, "twitch.user_added", [{id:"user", value:user.display_name}]), ephemeral:true});
-				this.dispatchEvent(new Event(Event.SUB_TO_LIVE_EVENT, user.id));
-			}else{
-				cmd.reply({content:Label.get(lang, "twitch.user_removed", [{id:"user", value:user.display_name}]), ephemeral:true});
-				this.dispatchEvent(new Event(Event.UNSUB_FROM_LIVE_EVENT, user.id));
-			}
-		}else{
-			cmd.reply({content:Label.get(lang, "twitch.user_notFound", [{id:"user", value:user}]), ephemeral:true});
-		}
-	}
-
-	/**
 	 * Called when someone sends a message to a channel
 	 * 
 	 * @param message 
@@ -521,6 +364,48 @@ export default class DiscordController extends EventDispatcher {
 		if (message.channel.type == "DM") return;
 		
 		if(message.content.indexOf("!") == 0) this.parseCommand(message);
+	}
+
+	/**
+	 * Parses a command entered on chat
+	 * @param text 
+	 */
+	private async parseCommand(message:Discord.Message):Promise<void> {
+		let isAdmin = message.member.permissions.has("ADMINISTRATOR");
+		if(!isAdmin) return;
+		
+		let txt = message.content.substring(1);
+		let chunks = txt.split(/\s/gi);
+		let	cmd = chunks.shift().toLowerCase();
+		let prefix = Config.BOT_NAME.toLowerCase();
+		
+		if(cmd.indexOf(prefix) != 0) return;
+		cmd = cmd.replace(prefix+"-", "");
+
+		switch(cmd) {
+			case "install": {
+				this.sendInstallCard(message)
+				break;
+			}
+			case "test-live": {
+				const userInfos = await TwitchUtils.loadChannelsInfo([chunks[0]]);
+				if(userInfos.length == 0) {
+					message.reply("Twitch user not found")
+					return;
+				}
+	
+				const user = userInfos[0];
+				const streamInfos = await TwitchUtils.getStreamsInfos(null, [user.id]);
+				if(streamInfos.length == 0) {
+					message.reply("Twitch user is not live")
+					return;
+				}
+				
+				const streamDetails = streamInfos[0];
+				let card = this.buildLiveCard(message.guildId, streamDetails, user, true);
+				await message.channel.send({embeds:[card]});
+			}
+		}
 	}
 
 	/**
@@ -583,41 +468,204 @@ export default class DiscordController extends EventDispatcher {
 		// member.guild.channels.cache.find((c) => c.name == "general").send("Hello <@"+member.id+"> ! ");
 	}
 
+	/**
+	 * Sends the install card to allow enabling features as commands
+	 * @param message 
+	 */
+	private async sendInstallCard(message:Discord.Message):Promise<void> {
+		const lang = this.lang(message.guildId);
+
+		const listItems:Discord.MessageSelectOptionData[] = [];
+		listItems.push( { label: "all", value: "all", description:"install all available commands" } );
+		listItems.push( { label: "Admin commands", value: "admin_commands", description:"Install only admin commands" } );
+		listItems.push( { label: "Roles selector", value: "roles_selector", description:"Allow to add a role selector" } );
+		listItems.push( { label: "Twitch live", value: "twitch_live", description:"Allow to un/subscribe to a twitch channel live events" } );
+		listItems.push( { label: "Poll", value: "poll", description:"Allow to create a poll" } );
+		listItems.push( { label: "Remove all", value: "remove_all", description:"Uninstall all commands" } );
+
+		const list = new Discord.MessageSelectMenu()
+			.setCustomId('install_selector')
+			.setPlaceholder( Label.get(lang, "admin.install.selector_placeholder") )
+			.setMinValues(1)
+			.setMaxValues(listItems.length)
+			.addOptions(listItems);
+		
+		const row = new Discord.MessageActionRow()
+		.addComponents([list]);
+
+		await message.channel.send({content:Label.get(lang, "admin.install.intro"), components:[row]});
+	}
 
 	/**
-	 * Parses a command entered on chat
-	 * @param text 
+	 * Creates the bot's commands and add them to the specified guild
 	 */
-	private async parseCommand(message:Discord.Message):Promise<void> {
-		let isAdmin = message.member.permissions.has("ADMINISTRATOR");
+	private async installCommands(guild?:Discord.Guild, cmd?:Discord.SelectMenuInteraction):Promise<void> {
+		const langChoices = [];
+		const locales = Label.getLocales();
+		for (let i = 0; i < locales.length; i++) {
+			const l = locales[i];
+			langChoices.push([l.name, l.id]);
+		}
 		
-		let txt = message.content.substring(1);
-		let chunks = txt.split(/\s/gi);
-		let	cmd = chunks.shift().toLowerCase();
-		// let prefix = Config.BOT_NAME.toLowerCase();
+		const roles = new SlashCommandBuilder()
+			.setDefaultPermission(false)
+			.setName(Config.CMD_PREFIX+'roles_selector')
+			.setDescription('Adds a role selector with the specified roles or all if no roles are specified')
+			.addRoleOption(option => option.setName('role1').setDescription('role N°1'))
+			.addRoleOption(option => option.setName('role2').setDescription('role N°2'))
+			.addRoleOption(option => option.setName('role3').setDescription('role N°3'))
+			.addRoleOption(option => option.setName('role4').setDescription('role N°4'))
+			.addRoleOption(option => option.setName('role5').setDescription('role N°5'))
+			.addRoleOption(option => option.setName('role6').setDescription('role N°6'))
+			.addRoleOption(option => option.setName('role7').setDescription('role N°7'))
+			.addRoleOption(option => option.setName('role8').setDescription('role N°8'))
+			.addRoleOption(option => option.setName('role9').setDescription('role N°9'))
+			.addRoleOption(option => option.setName('role10').setDescription('role N°10'))
+			.addRoleOption(option => option.setName('role11').setDescription('role N°11'))
+			.addRoleOption(option => option.setName('role12').setDescription('role N°12'))
+			.addRoleOption(option => option.setName('role13').setDescription('role N°13'))
+			.addRoleOption(option => option.setName('role14').setDescription('role N°14'))
+			.addRoleOption(option => option.setName('role15').setDescription('role N°15'))
+			.addRoleOption(option => option.setName('role16').setDescription('role N°16'))
+			.addRoleOption(option => option.setName('role17').setDescription('role N°17'))
+			.addRoleOption(option => option.setName('role18').setDescription('role N°18'))
+			.addRoleOption(option => option.setName('role19').setDescription('role N°19'))
+			.addRoleOption(option => option.setName('role20').setDescription('role N°20'));
 		
-		// if(cmd.indexOf(prefix) != 0) return;
-		// cmd = cmd.replace(prefix+"-", "");
+		const admin = new SlashCommandBuilder()
+			.setDefaultPermission(false)
+			.setName(Config.CMD_PREFIX+'admin')
+			.setDescription('admin a protobud feature')
+			.addSubcommand(subcommand =>
+				subcommand
+					.setName('access')
+					.setDescription('Allows or disallows the specified role or user to use the private commands')
+					.addRoleOption(option => option.setName('allow_role').setDescription('Role to allow'))
+					.addRoleOption(option => option.setName('disallow_role').setDescription('Role to allow'))
+					.addUserOption(option => option.setName('allow_user').setDescription('User to allow'))
+					.addUserOption(option => option.setName('disallow_user').setDescription('User to allow'))
+			)
+			.addSubcommand(subcommand =>
+				subcommand
+					.setName('language')
+					.setDescription('Change the bot\'s language')
+					.addStringOption(option => option.setRequired(true).setName('lang').setDescription('Language to use').addChoices(langChoices))
+			);
 
-		if(isAdmin) {
-			if(cmd == "test-live") {
-				const userInfos = await TwitchUtils.loadChannelsInfo([chunks[0]]);
-				if(userInfos.length == 0) {
-					message.reply("Twitch user not found")
-					return;
-				}
+		const twitch = new SlashCommandBuilder()
+			.setDefaultPermission(false)
+			.setName(Config.CMD_PREFIX+'twitch')
+			.setDescription('Enable or disable twitch live notifications')
+			.addStringOption(option => option.setRequired(false).setName('watch_login').setDescription('The twitch login of the channel to start watching'))
+			.addStringOption(option => option.setRequired(false).setName('unwatch_login').setDescription('The twitch login of the channel to stop watching'))
+		
+		const poll = new SlashCommandBuilder()
+			.setName(Config.CMD_PREFIX+'poll')
+			.setDescription('Create a poll')
+			.addStringOption(option => option.setRequired(true).setName('title').setDescription('Title of the poll'))
+			.addStringOption(option => option.setRequired(true).setName('option1').setDescription('Name of the first option'))
+			.addStringOption(option => option.setRequired(true).setName('option2').setDescription('Name of the second option'))
+			.addBooleanOption(option => option.setName('anonvotes').setDescription('Should votes be anonnymous?'))
+			.addBooleanOption(option => option.setName('unique').setDescription('Can user vote for only one option? (only works if anonvotes is true)'))
+			.addStringOption(option => option.setName('option3').setDescription('Name of the third option'))
+			.addStringOption(option => option.setName('option4').setDescription('Name of the option 4'))
+			.addStringOption(option => option.setName('option5').setDescription('Name of the option 5'))
+			.addStringOption(option => option.setName('option6').setDescription('Name of the option 6'))
+			.addStringOption(option => option.setName('option7').setDescription('Name of the option 7'))
+			.addStringOption(option => option.setName('option8').setDescription('Name of the option 8'))
+			.addStringOption(option => option.setName('option9').setDescription('Name of the option 9'))
+			.addStringOption(option => option.setName('option10').setDescription('Name of the option 10'))
+			.addStringOption(option => option.setName('option11').setDescription('Name of the option 11'))
+			.addStringOption(option => option.setName('option12').setDescription('Name of the option 12'))
+			.addStringOption(option => option.setName('option13').setDescription('Name of the option 13'))
+			.addStringOption(option => option.setName('option14').setDescription('Name of the option 14'))
+			.addStringOption(option => option.setName('option15').setDescription('Name of the option 15'))
+			.addStringOption(option => option.setName('option16').setDescription('Name of the option 16'))
+			.addStringOption(option => option.setName('option17').setDescription('Name of the option 17'))
+			.addStringOption(option => option.setName('option18').setDescription('Name of the option 18'))
+			.addStringOption(option => option.setName('option19').setDescription('Name of the option 19'))
+			.addStringOption(option => option.setName('option20').setDescription('Name of the option 20'))
 
-				const user = userInfos[0];
-				const streamInfos = await TwitchUtils.getStreamsInfos(null, [user.id]);
-				if(streamInfos.length == 0) {
-					message.reply("Twitch user is not live")
-					return;
-				}
-				
-				const streamDetails = streamInfos[0];
-				let card = this.buildLiveCard(message.guildId, streamDetails, user, true);
-				await message.channel.send({embeds:[card]});
+		
+		const list = [];
+		const all =  cmd.values.indexOf("all") > -1;
+		if(all || cmd.values.indexOf("poll") > -1)				list.push(poll.toJSON());
+		if(all || cmd.values.indexOf("admin_commands") > -1)	list.push(admin.toJSON());
+		if(all || cmd.values.indexOf("roles_selector") > -1)	list.push(roles.toJSON());
+		if(all || cmd.values.indexOf("twitch_live") > -1)		list.push(twitch.toJSON());
+		console.log("Adding ", list.length, " commands");
+		
+		await this.rest.put(
+			Routes.applicationGuildCommands(Config.DISCORDBOT_CLIENT_ID, guild.id),
+			{ body: list },
+		);
+		
+		//Allow admins to use all commands
+		let members = await guild.members.fetch();
+		let commands = (await guild.commands.fetch()).toJSON();
+		const admins = members.filter(v => v.permissions.has("ADMINISTRATOR")).toJSON();
+		
+		for (let h = 0; h < admins.length; h++) {
+			const admin = admins[h];
+			
+			for (let i = 0; i < commands.length; i++) {
+				const command = commands[i];
+				if(command.defaultPermission) continue;//If it's a public command, no need to add permissions
+				//Remove all users
+				// const perms = command.permissions;
+				// await perms.remove({users: members.map(v=>v.user.id)});
+				const permissions = [
+					{
+						id: admin.user.id,
+						type: ApplicationCommandPermissionTypes.USER,
+						permission: true,
+					},
+				];
+
+				await command.permissions.add({ permissions });
 			}
+		}
+	}
+
+	/**
+	 * Start watching for a twitch user to go live
+	 */
+	private async twitchLiveAlertChannel(cmd:Discord.CommandInteraction):Promise<void> {
+		let watch:boolean = false;
+		let key = "unwatch_login";
+		if(cmd.options.get("watch_login")) {
+			watch = true;
+			key = "watch_login";
+		}
+		const lang = this.lang(cmd.guildId);
+		if(!Config.IS_TWITCH_CONFIGURED) {
+			cmd.reply({content:Label.get(lang, "twitch.not_configured"), ephemeral:true});
+			return;
+		}
+		const user = cmd.options.get(key).value as string;
+		const userRes = await TwitchUtils.loadChannelsInfo([user]);
+		if(userRes.length>0) {
+			const user = userRes[0];
+			let list = StorageController.getData(cmd.guildId, StorageController.TWITCH_USERS);
+			if(!list) list = [];
+			if(watch) {
+				if(list.findIndex(v=>v.uid==user.id && v.channel==cmd.channelId) == -1) {
+					list.push({uid:user.id, login:user.login, channel:cmd.channelId});
+				}
+			}else{
+				const index = list.findIndex(v=>v.uid==user.id);
+				if(index > -1) list.splice(index, 1);
+			}
+			StorageController.saveData(cmd.guildId, StorageController.TWITCH_USERS, list);
+			if(watch) {
+				cmd.reply({content:Label.get(lang, "twitch.user_added", [{id:"user", value:user.display_name}]), ephemeral:true});
+				this.dispatchEvent(new Event(Event.SUB_TO_LIVE_EVENT, user.id));
+			}else{
+				cmd.reply({content:Label.get(lang, "twitch.user_removed", [{id:"user", value:user.display_name}]), ephemeral:true});
+				this.dispatchEvent(new Event(Event.UNSUB_FROM_LIVE_EVENT, user.id));
+			}
+		}else{
+			cmd.reply({content:Label.get(lang, "twitch.user_notFound", [{id:"user", value:user}]), ephemeral:true});
 		}
 	}
 
@@ -728,7 +776,8 @@ export default class DiscordController extends EventDispatcher {
 		}else{
 			message = Label.get(lang, "admin.user_" + (allow?"allowed":"disallowed"), [{id:"user", value:id}]);
 		}
-		cmd.channel.send(message)
+
+		cmd.channel.send(message);
 		Logger.success(message);
 		const m = await cmd.fetchReply() as Discord.Message;
 		await m.delete();

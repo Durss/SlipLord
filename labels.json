@@ -1,11 +1,16 @@
 {
 	"en":{
 		"language": "English",
-		"help":{
-			"intro":"Here are the available commands:",
-			"cmd_live":"Configure a channel to receive twitch live alerts",
-			"cmd_roles":"Configure a channel to display the roles selcor",
-			"cmd_poll":"Creates a poll with pre-configured selectable emojis"
+		"admin":{
+			"install": {
+				"intro":"Select the commands you'd like to install for this Discord server on the list bellow",
+				"selector_placeholder":"Select one or multiple entries"
+			},
+			"role_allowed": ":white_check_mark: The role <@&{role}> has been allowed to use admin commands",
+			"role_disallowed": ":x: The role <@&{role}> is not allowed to use admin commands anymore",
+			"user_allowed": ":white_check_mark: The user <@{user}> has been allowed to use admin commands",
+			"user_disallowed": ":x: The user <@{user}> is not allowed to use admin commands anymore",
+			"language_updated": ":white_check_mark: The language has been updated"
 		},
 		"live": {
 			"add_ok":"The Twitch live alert bot has been properly configured on the channel #{channel}",
@@ -27,13 +32,6 @@
 			"stream_duration":"Stream duration",
 			"viewers_max":"Viewers max"
 		},
-		"admin":{
-			"role_allowed": ":white_check_mark: The role <@&{role}> has been allowed to use admin commands",
-			"role_disallowed": ":x: The role <@&{role}> is not allowed to use admin commands anymore",
-			"user_allowed": ":white_check_mark: The user <@{user}> has been allowed to use admin commands",
-			"user_disallowed": ":x: The user <@{user}> is not allowed to use admin commands anymore",
-			"language_updated": ":white_check_mark: The language has been updated"
-		},
 		"poll":{
 			"created_by":"_(created by <@{user}>)_"
 		},
@@ -54,11 +52,16 @@
 	
 	"fr":{
 		"language": "Français",
-		"help":{
-			"intro":"Voici les commandes disponibles :",
-			"cmd_live":"Configure un channel comme destination des alertes de live",
-			"cmd_roles":"Configure un channel comme destination du message de sélection de rôles",
-			"cmd_poll":"Créé un sondage avec des réactions pré-configurées"
+		"admin":{
+			"install": {
+				"intro":"Sélectionne les commandes que tu souhaites installer sur ce serveur Discord dans la liste ci-dessous",
+				"selector_placeholder":"Selectionne une ou plusieurs entrées"
+			},
+			"role_allowed": ":white_check_mark: Le rôle <@&{role}> est maintenant autorisé à utiliser les commandes d'admin",
+			"role_disallowed": ":x: Le rôle <@&{role}> n'est plus autorisé à utiliser les commandes d'admin",
+			"user_allowed": ":white_check_mark: <@{user}> peut maintenant utiliser les commandes d'admin",
+			"user_disallowed": ":x: <@{user}> n'est plus autorisé à utiliser les commandes d'admin",
+			"language_updated": ":white_check_mark: Le langage a bien été mis à jour"
 		},
 		"live": {
 			"add_ok":"Le bot d'alertes de live a bien été configuré sur le channel #{channel}",
@@ -79,13 +82,6 @@
 			"category":"Catégorie",
 			"stream_duration":"Durée du stream",
 			"viewers_max":"Viewers max"
-		},
-		"admin":{
-			"role_allowed": ":white_check_mark: Le rôle <@&{role}> est maintenant autorisé à utiliser les commandes d'admin",
-			"role_disallowed": ":x: Le rôle <@&{role}> n'est plus autorisé à utiliser les commandes d'admin",
-			"user_allowed": ":white_check_mark: <@{user}> peut maintenant utiliser les commandes d'admin",
-			"user_disallowed": ":x: <@{user}> n'est plus autorisé à utiliser les commandes d'admin",
-			"language_updated": ":white_check_mark: Le langage a bien été mis à jour"
 		},
 		"poll":{
 			"created_by":"_(créé par <@{user}>)_"
