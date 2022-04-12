@@ -14,6 +14,7 @@ import { AnonPoll, AnonPollOption, StorageController, TwitchLiveMessage, TwitchU
 
 /**
 * Created : 15/10/2020 
+* TODO : split this file into sub modules
 */
 export default class DiscordController extends EventDispatcher {
 
@@ -88,6 +89,55 @@ export default class DiscordController extends EventDispatcher {
 		}while(true);
 		Logger.success("Commands added to all guilds");
 		//*/
+		this.cronTask();
+	}
+
+	private async cronTask():Promise<void> {
+		let d = new Date();
+		d.setMilliseconds(0);
+		d.setSeconds(0);
+		d.setMinutes(0);
+		d.setHours(d.getHours()+1);
+		//Schedule next task for the next round hour
+		setTimeout(()=> {
+			this.cronTask();
+		}, d.getTime() - Date.now());
+
+		try {
+			//Get all guilds refs
+			const guilds = this.client.guilds.cache.entries();
+			const today = new Date();
+			const todayDay = today.getDate();
+			const todayMonth = today.getMonth() + 1;
+			const todayYear = today.getFullYear();
+			do {
+				const guildPointer = guilds.next();
+				if(guildPointer.done) break;
+				//get actual guild ref
+				const guild = guildPointer.value[1] as Discord.Guild;
+				const lang = this.lang(guild.id);
+				const birthdays:BirthdayCollection = StorageController.getData(guild.id, StorageController.BIRTHDAYS);
+				const chanId = StorageController.getData(guild.id, StorageController.BIRTHDAY_CHANNEL);
+				const channel = await guild.channels.fetch(chanId) as Discord.TextChannel;
+
+				if(!channel || !birthdays) continue;
+
+				for (const uid in birthdays) {
+					const b = birthdays[uid];
+					//Check if today is the birthday and the alert hasn't been sent for this year
+					if(b.day == todayDay && b.month == todayMonth
+					&& (!b.lastAlert || new Date(b.lastAlert).getFullYear() != todayYear)) {
+						channel.send(Label.get(lang, "birthday.alert", [{id:"user", value:uid}]));
+						b.lastAlert = Date.now();
+					}
+				}
+
+				StorageController.saveData(guild.id, StorageController.BIRTHDAYS, birthdays);
+			}while(true);
+			Logger.success("Commands added to all guilds");
+		}catch(error) {
+			//ignore errors
+		}
 	}
 
 	/**
@@ -196,6 +246,15 @@ export default class DiscordController extends EventDispatcher {
 		// 	//after a reboot of the server
 		// 	this.sendRolesSelector();
 		// }
+	}
+
+	/**
+	 * Gets the locale configured for the specified guild
+	 */
+	private lang(guildId:string):string {
+		const lang = StorageController.getData(guildId, StorageController.LANGUAGE);
+		if(!lang) return Label.getLocales()[0].id;
+		return lang;
 	}
 
 	/**
@@ -356,6 +415,11 @@ export default class DiscordController extends EventDispatcher {
 					this.createPoll(cmd);
 					break;
 				}
+				
+				case "birthday": {
+					this.setBirthday(cmd);
+					break;
+				}
 			}
 		}
 	}
@@ -482,7 +546,6 @@ export default class DiscordController extends EventDispatcher {
 	private async sendInstallCard(message:Discord.Message):Promise<void> {
 		const lang = this.lang(message.guildId);
 
-		
 		const listItems:Discord.MessageSelectOptionData[] = [];
 		listItems.push( { label: Label.get(lang, "admin.install.all.label"),		value: "all",				description:Label.get(lang, "admin.install.all.description") } );
 		listItems.push( { label: Label.get(lang, "admin.install.admin.label"),		value: "admin_commands",	description:Label.get(lang, "admin.install.admin.description") } );
@@ -874,17 +937,52 @@ export default class DiscordController extends EventDispatcher {
 		await m.delete();
 	}
 
+	/**
+	 * Updates count on anonymous polls
+	 * @param poll 
+	 * @param reaction 
+	 */
 	private async updateAnonPoll(poll:AnonPoll, reaction:Discord.MessageReaction):Promise<void> {
 		let msg = poll.opt.map(option => option.e + " `(x"+option.v.length+")` ➔ "+ option.n ).join("\n");
 		await reaction.message.edit(poll.title + "\n" + msg);
 	}
 
 	/**
-	 * Gets the locale configured for the specified guild
+	 * Called when a user sets her/his birthday
+	 * 
+	 * @param cmd 
 	 */
-	private lang(guildId:string):string {
-		const lang = StorageController.getData(guildId, StorageController.LANGUAGE);
-		if(!lang) return Label.getLocales()[0].id;
-		return lang;
+	private async setBirthday(cmd:Discord.CommandInteraction):Promise<void> {
+		await cmd.deferReply({ephemeral:true});
+
+		const lang = this.lang(cmd.guildId);
+		
+		let birthdays:BirthdayCollection = StorageController.getData(cmd.guildId, StorageController.BIRTHDAYS);
+		const date = cmd.options.get("date").value as string;
+		const chunks = date.split(/[^0-9]+/gi);
+		const day = parseInt(chunks[0]);
+		const month = parseInt(chunks[1]);
+		if(isNaN(day) || day<1 || day > 31
+		|| isNaN(month) || month<1 || month > 12) {
+			const format = Label.get(lang, "commands.birthday.option")
+			cmd.editReply(Label.get(lang, "birthday.invalid_date", [{id:"format", value:format}]));
+			return;
+		}
+
+		if(!birthdays) birthdays = {};
+		birthdays[cmd.user.id] = {day, month};
+
+		StorageController.saveData(cmd.guildId, StorageController.BIRTHDAYS, birthdays);
+		cmd.editReply( Label.get(lang, "birthday.success", [{id:"date", value:day+"-"+month}]));
 	}
+}
+
+interface BirthdayCollection {
+	[key:string]:Birthday
+}
+
+interface Birthday {
+	day:number;
+	month:number;
+	lastAlert?:number;
 }

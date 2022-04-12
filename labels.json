@@ -4,7 +4,7 @@
 		"admin":{
 			"install": {
 				"intro":"Select the commands you'd like to install for this Discord server on the list bellow",
-				"selector_placeholder":"Select one or multiple entries",
+				"selector_placeholder":"Select...",
 				"all": {
 					"label":"Install all",
 					"description":"Install all available commands"
@@ -80,7 +80,7 @@
 		},
 		"roles": {
 			"intro":"Open the selector bellow and select all the roles you want",
-			"list_placeholder":"Select one or multiple role",
+			"list_placeholder":"Select...",
 			"add_ok":":white_check_mark: <@{user}>, you now have the selected roles !",
 			"del_all_intro":"To reset all your roles, click the button bellow",
 			"del_all":"🗑️ Remove all roles",
@@ -101,6 +101,11 @@
 			"user_added": ":white_check_mark: A notification will be sent on this channel when the Twitch user **{user}** goes live",
 			"user_removed": ":white_check_mark: The live notifications for the **{user}** are now disabled",
 			"user_notFound": ":x: The Twitch user **{user}** does not exists"
+		},
+		"birthday": {
+			"invalid_date": "The specified date is invalid. Format must be the following : `{FORMAT}`",
+			"success": ":white_check_mark: Your birthday has been set to **{date}**",
+			"alert": "**🎉 🎊 Today is <@{user}>'s birthday 🎊 🎉**\nHappy birthday !"
 		}
 	},
 
@@ -116,7 +121,7 @@
 		"admin":{
 			"install": {
 				"intro":"Sélectionne les commandes que tu souhaites installer sur ce serveur Discord dans la liste ci-dessous",
-				"selector_placeholder":"Selectionne une ou plusieurs entrées",
+				"selector_placeholder":"Sélection...",
 				"all": {
 					"label":"Tout installer",
 					"description":"Installer toutes les commandes disponibles"
@@ -192,7 +197,7 @@
 		},
 		"roles": {
 			"intro":"Pour t'attribuer un rôle clic sur la réaction correspondante :",
-			"list_placeholder":"Selectionne un ou plusieurs rôles",
+			"list_placeholder":"Sélection...",
 			"add_ok":":white_check_mark: <@{user}>, les roles t'ont bien été attribués !",
 			"del_all_intro":"Pour réinitialiser tes rôles, click le bouton ci-dessous",
 			"del_all":"Me supprimer tous les rôles",
@@ -213,6 +218,11 @@
 			"user_added": ":white_check_mark: Une notification sera envoyée dans ce channel lorsque **{user}** sera en live sur Twitch",
 			"user_removed": ":white_check_mark: Les notifications de live de **{user}** sont maintenant désactivées",
 			"user_notFound": ":x: L'utilisateur·ice **{user}** Twitch n'existe pas"
+		},
+		"birthday": {
+			"invalid_date": "La date spécifiée est invalide. Elle doit être au format suivant : `{FORMAT}`",
+			"success": ":white_check_mark: Ton anniversaire a bien été enregistré pour le **{date}**",
+			"alert": "**🎉 🎊 Aujourd'hui c'est l'anniversaire de <@{user}> 🎊 🎉**\nHappy birthday !"
 		}
 	}
 }
