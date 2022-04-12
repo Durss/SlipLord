@@ -3,6 +3,7 @@
 		"language": "English",
 		"admin":{
 			"install": {
+				"done":":white_check_mark: Installation complete",
 				"intro":"Select the commands you'd like to install for this Discord server on the list bellow",
 				"selector_placeholder":"Select...",
 				"all": {
@@ -120,6 +121,7 @@
 		"language": "Français",
 		"admin":{
 			"install": {
+				"done":":white_check_mark: Installation effectuée",
 				"intro":"Sélectionne les commandes que tu souhaites installer sur ce serveur Discord dans la liste ci-dessous",
 				"selector_placeholder":"Sélection...",
 				"all": {

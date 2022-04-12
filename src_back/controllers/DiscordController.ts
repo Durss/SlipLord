@@ -110,6 +110,7 @@ export default class DiscordController extends EventDispatcher {
 			const todayDay = today.getDate();
 			const todayMonth = today.getMonth() + 1;
 			const todayYear = today.getFullYear();
+
 			do {
 				const guildPointer = guilds.next();
 				if(guildPointer.done) break;
@@ -341,7 +342,7 @@ export default class DiscordController extends EventDispatcher {
 			let action = cmd.customId;
 			switch(action) {
 				case "install_selector":{
-					interaction.deferUpdate();
+					await interaction.deferUpdate();
 					await this.installCommands(cmd.guild, cmd);
 					//Reset menu selection
 					await interaction.editReply({ content: interaction.message.content});
@@ -634,7 +635,6 @@ export default class DiscordController extends EventDispatcher {
 		}
 
 		const birthday = new SlashCommandBuilder()
-			.setDefaultPermission(false)
 			.setName(Config.CMD_PREFIX+'birthday')
 			.setDescription(Label.get(lang, "commands.birthday.description"))
 			.addStringOption(option => option.setRequired(true).setName('date').setDescription(Label.get(lang, "commands.birthday.option")))
@@ -677,6 +677,9 @@ export default class DiscordController extends EventDispatcher {
 
 				await command.permissions.add({ permissions });
 			}
+		}
+		if(cmd) {
+			await cmd.channel.send(Label.get(lang, "admin.install.done"));
 		}
 	}
 
