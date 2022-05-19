@@ -224,7 +224,7 @@
 			}
 		},
 		"roles": {
-			"intro":"Pour t'attribuer un rôle clic sur la réaction correspondante :",
+			"intro":"Sélectionne les rôles que tu souhaites t'attribuer dans la liste ci-dessous",
 			"list_placeholder":"Sélection...",
 			"add_ok":":white_check_mark: <@{user}>, les roles t'ont bien été attribués !",
 			"del_all_intro":"Pour réinitialiser tes rôles, click le bouton ci-dessous",
