@@ -133,9 +133,8 @@ export default class DiscordController extends EventDispatcher {
 					}
 				}
 
-				StorageController.saveData(guild.id, StorageController.BIRTHDAYS, birthdays);
+				StorageController.setData(guild.id, StorageController.BIRTHDAYS, birthdays);
 			}while(true);
-			Logger.success("Commands added to all guilds");
 		}catch(error) {
 			//ignore errors
 		}
@@ -206,7 +205,7 @@ export default class DiscordController extends EventDispatcher {
 							//Update the date on all the entries of the user on the global storage
 							const liveItem = usersStorage[historyKey];
 							liveItem.date = Date.now();
-							StorageController.saveData("global", StorageController.TWITCH_USERS, usersStorage);
+							StorageController.setData("global", StorageController.TWITCH_USERS, usersStorage);
 						}else{
 							//Send new message
 							message = await channel.send({embeds:[card]});
@@ -216,7 +215,7 @@ export default class DiscordController extends EventDispatcher {
 								date:Date.now(),
 								messageId:message.id,
 							};
-							StorageController.saveData("global", StorageController.TWITCH_USERS, usersStorage);
+							StorageController.setData("global", StorageController.TWITCH_USERS, usersStorage);
 						}
 
 						//Schedule message update 1min later
@@ -289,7 +288,7 @@ export default class DiscordController extends EventDispatcher {
 						i--;
 					}
 				}
-				StorageController.saveData(guild.id, StorageController.ANON_POLLS, polls);
+				StorageController.setData(guild.id, StorageController.ANON_POLLS, polls);
 			}
 		}
 		Logger.success("Anon polls listened successfully");
@@ -391,14 +390,14 @@ export default class DiscordController extends EventDispatcher {
 				case "admin/language": {
 					await cmd.deferReply({ephemeral:true});
 					lang = cmd.options.get("lang").value as string;
-					StorageController.saveData(cmd.guildId, StorageController.LANGUAGE, lang);
+					StorageController.setData(cmd.guildId, StorageController.LANGUAGE, lang);
 					cmd.editReply(Label.get(lang, "admin.language_updated"));
 					break;
 				}
 				
 				case "admin/birthday_target": {
 					await cmd.deferReply({ephemeral:true});
-					StorageController.saveData(cmd.guildId, StorageController.BIRTHDAY_CHANNEL, cmd.channelId);
+					StorageController.setData(cmd.guildId, StorageController.BIRTHDAY_CHANNEL, cmd.channelId);
 					cmd.editReply(Label.get(lang, "admin.birthday_chan_ok"));
 					break;
 				}
@@ -419,6 +418,11 @@ export default class DiscordController extends EventDispatcher {
 				
 				case "birthday": {
 					this.setBirthday(cmd);
+					break;
+				}
+				
+				case "inactivity": {
+					this.saveInactivityParams(cmd);
 					break;
 				}
 			}
@@ -456,26 +460,27 @@ export default class DiscordController extends EventDispatcher {
 
 		switch(cmd) {
 			case "install": {
-				this.sendInstallCard(message)
+				await this.sendInstallCard(message);
 				break;
 			}
 			case "test-live": {
 				const userInfos = await TwitchUtils.loadChannelsInfo([chunks[0]]);
 				if(userInfos.length == 0) {
-					message.reply("Twitch user not found")
+					message.reply("Twitch user not found");
 					return;
 				}
 	
 				const user = userInfos[0];
 				const streamInfos = await TwitchUtils.getStreamsInfos(null, [user.id]);
 				if(streamInfos.length == 0) {
-					message.reply("Twitch user is not live")
+					message.reply("Twitch user is not live");
 					return;
 				}
 				
 				const streamDetails = streamInfos[0];
 				let card = this.buildLiveCard(message.guildId, streamDetails, user, true);
 				await message.channel.send({embeds:[card]});
+				break;
 			}
 		}
 	}
@@ -516,7 +521,7 @@ export default class DiscordController extends EventDispatcher {
 					}
 				}
 			}
-			StorageController.saveData(reaction.message.guildId, StorageController.ANON_POLLS, anonPolls);
+			StorageController.setData(reaction.message.guildId, StorageController.ANON_POLLS, anonPolls);
 		}
 	}
 
@@ -554,6 +559,7 @@ export default class DiscordController extends EventDispatcher {
 		listItems.push( { label: Label.get(lang, "admin.install.twitch.label"),		value: "twitch_live",		description:Label.get(lang, "admin.install.twitch.description") } );
 		listItems.push( { label: Label.get(lang, "admin.install.poll.label"),		value: "poll",				description:Label.get(lang, "admin.install.poll.description") } );
 		listItems.push( { label: Label.get(lang, "admin.install.birthday.label"),	value: "birthday",			description:Label.get(lang, "admin.install.birthday.description") } );
+		listItems.push( { label: Label.get(lang, "admin.install.inactivity.label"),	value: "inactivity",		description:Label.get(lang, "admin.install.inactivity.description") } );
 		listItems.push( { label: Label.get(lang, "admin.install.remove.label"),		value: "remove_all",		description:Label.get(lang, "admin.install.remove.description") } );
 
 		const list = new Discord.MessageSelectMenu()
@@ -587,22 +593,30 @@ export default class DiscordController extends EventDispatcher {
 			.setName(Config.CMD_PREFIX+'roles_selector')
 			.setDescription(Label.get(lang, "commands.role_selector.description"))
 		for (let i = 1; i <= 20; i++) {
-			roles.addStringOption(option => option.setName('role'+i).setDescription(Label.get(lang, "commands.role_selector.role", [{id:"X", value:i.toString()}])))
+			roles.addRoleOption((option) => {
+				option.setName('role'+i)
+				.setDescription(Label.get(lang, "commands.role_selector.role", [{id:"X", value:i.toString()}]))
+				if(i == 1) {
+					option.setRequired(true);
+				}
+				return option;
+			})
 		}
 		
 		const admin = new SlashCommandBuilder()
 			.setDefaultPermission(false)
 			.setName(Config.CMD_PREFIX+'admin')
 			.setDescription(Label.get(lang, "commands.admin.description"))
-			.addSubcommand(subcommand =>
-				subcommand
-					.setName('access')
-					.setDescription(Label.get(lang, "commands.admin.access.description"))
-					.addRoleOption(option => option.setName('allow_role').setDescription(Label.get(lang, "commands.admin.access.allow_user")))
-					.addRoleOption(option => option.setName('disallow_role').setDescription(Label.get(lang, "commands.admin.access.disallow_user")))
-					.addUserOption(option => option.setName('allow_user').setDescription(Label.get(lang, "commands.admin.access.allow_role")))
-					.addUserOption(option => option.setName('disallow_user').setDescription(Label.get(lang, "commands.admin.access.disallow_role")))
-			)
+			//No more need for this after new native permissions system
+			// .addSubcommand(subcommand =>
+			// 	subcommand
+			// 		.setName('access')
+			// 		.setDescription(Label.get(lang, "commands.admin.access.description"))
+			// 		.addRoleOption(option => option.setName('allow_role').setDescription(Label.get(lang, "commands.admin.access.allow_user")))
+			// 		.addRoleOption(option => option.setName('disallow_role').setDescription(Label.get(lang, "commands.admin.access.disallow_user")))
+			// 		.addUserOption(option => option.setName('allow_user').setDescription(Label.get(lang, "commands.admin.access.allow_role")))
+			// 		.addUserOption(option => option.setName('disallow_user').setDescription(Label.get(lang, "commands.admin.access.disallow_role")))
+			// )
 			.addSubcommand(subcommand =>
 				subcommand
 					.setName('language')
@@ -614,6 +628,24 @@ export default class DiscordController extends EventDispatcher {
 					.setName('birthday_target')
 					.setDescription(Label.get(lang, "commands.admin.birthday"))
 			);
+		
+		const inactivity = new SlashCommandBuilder()
+			.setDefaultPermission(false)
+			.setName('inactivity')
+			.setDescription(Label.get(lang, "commands.admin.inactivity.description"))
+			.addNumberOption(option => option.setRequired(true).setName('days').setDescription(Label.get(lang, "commands.admin.inactivity.days")))
+			.addNumberOption(option => option.setName('days_warn').setDescription(Label.get(lang, "commands.admin.inactivity.days_warn")))
+			.addBooleanOption(option => option.setName('disable').setDescription(Label.get(lang, "commands.admin.inactivity.disable")))
+			.addRoleOption(option => option.setName('role_add_1').setDescription(Label.get(lang, "commands.admin.inactivity.role_add")))
+			.addRoleOption(option => option.setName('role_add_2').setDescription(Label.get(lang, "commands.admin.inactivity.role_add")))
+			.addRoleOption(option => option.setName('role_add_3').setDescription(Label.get(lang, "commands.admin.inactivity.role_add")))
+			.addRoleOption(option => option.setName('role_add_4').setDescription(Label.get(lang, "commands.admin.inactivity.role_add")))
+			.addRoleOption(option => option.setName('role_add_5').setDescription(Label.get(lang, "commands.admin.inactivity.role_add")))
+			.addRoleOption(option => option.setName('role_del_1').setDescription(Label.get(lang, "commands.admin.inactivity.role_del")))
+			.addRoleOption(option => option.setName('role_del_2').setDescription(Label.get(lang, "commands.admin.inactivity.role_del")))
+			.addRoleOption(option => option.setName('role_del_3').setDescription(Label.get(lang, "commands.admin.inactivity.role_del")))
+			.addRoleOption(option => option.setName('role_del_4').setDescription(Label.get(lang, "commands.admin.inactivity.role_del")))
+			.addRoleOption(option => option.setName('role_del_5').setDescription(Label.get(lang, "commands.admin.inactivity.role_del")));
 
 		const twitch = new SlashCommandBuilder()
 			.setDefaultPermission(false)
@@ -646,6 +678,8 @@ export default class DiscordController extends EventDispatcher {
 		if(all || cmd.values.indexOf("roles_selector") > -1)	list.push(roles.toJSON());
 		if(all || cmd.values.indexOf("twitch_live") > -1)		list.push(twitch.toJSON());
 		if(all || cmd.values.indexOf("birthday") > -1)			list.push(birthday.toJSON());
+		if(all || cmd.values.indexOf("inactivity") > -1)		list.push(inactivity.toJSON());
+
 		console.log("Adding ", list.length, " commands");
 		
 		await this.rest.put(
@@ -653,6 +687,7 @@ export default class DiscordController extends EventDispatcher {
 			{ body: list },
 		);
 		
+		/*
 		//Allow admins to use all commands
 		let members = await guild.members.fetch();
 		let commands = (await guild.commands.fetch()).toJSON();
@@ -678,6 +713,7 @@ export default class DiscordController extends EventDispatcher {
 				await command.permissions.add({ permissions });
 			}
 		}
+		//*/
 		if(cmd) {
 			await cmd.channel.send(Label.get(lang, "admin.install.done"));
 		}
@@ -712,7 +748,7 @@ export default class DiscordController extends EventDispatcher {
 				const index = list.findIndex(v=>v.uid==user.id);
 				if(index > -1) list.splice(index, 1);
 			}
-			StorageController.saveData(cmd.guildId, StorageController.TWITCH_USERS, list);
+			StorageController.setData(cmd.guildId, StorageController.TWITCH_USERS, list);
 			if(watch) {
 				cmd.reply({content:Label.get(lang, "twitch.user_added", [{id:"user", value:user.display_name}]), ephemeral:true});
 				this.dispatchEvent(new Event(Event.SUB_TO_LIVE_EVENT, user.id));
@@ -791,6 +827,7 @@ export default class DiscordController extends EventDispatcher {
 
 	/**
 	 * Gives/remove access to private commandes to a user or a role
+	 * [NOT USED ANYMORE] Discord implemented a native way of managing permissions
 	 */
 	private async setAccessTo(cmd:Discord.CommandInteraction):Promise<void> {
 		await cmd.deferReply();
@@ -933,7 +970,7 @@ export default class DiscordController extends EventDispatcher {
 				unique: uniqueMode,
 				opt:options,
 			})
-			StorageController.saveData(cmd.guildId, StorageController.ANON_POLLS, polls);
+			StorageController.setData(cmd.guildId, StorageController.ANON_POLLS, polls);
 		}
 
 		const m = await cmd.fetchReply() as Discord.Message;
@@ -975,8 +1012,51 @@ export default class DiscordController extends EventDispatcher {
 		if(!birthdays) birthdays = {};
 		birthdays[cmd.user.id] = {day, month};
 
-		StorageController.saveData(cmd.guildId, StorageController.BIRTHDAYS, birthdays);
+		StorageController.setData(cmd.guildId, StorageController.BIRTHDAYS, birthdays);
 		cmd.editReply( Label.get(lang, "birthday.success", [{id:"date", value:day+"-"+month}]));
+	}
+
+	/**
+	 * Called when configuring the inactivity timeout
+	 * 
+	 * @param cmd 
+	 */
+	private async saveInactivityParams(cmd:Discord.CommandInteraction):Promise<void> {
+		const lang = this.lang(cmd.guildId);
+
+		cmd.deferReply({ephemeral:true});
+		if(cmd.options.get("disable")?.value === true) {
+			StorageController.delData(cmd.guildId, StorageController.INACTIVITY_CONFIGS);
+			cmd.editReply(Label.get(lang, "commands.admin.inactivity.disable_ok"));
+			return;
+		}
+
+
+		const days = cmd.options.get("days")?.value as number;
+		const daysWarn = cmd.options.get("days_warn")?.value as number;
+		const rolesAdd:string[] = [];
+		const rolesDel:string[] = [];
+
+		for (let i = 1; i < 10; i++) {
+			const p = cmd.options.get("role_add_"+i);
+			if(!p || !p.role) break;
+			rolesAdd.push(p.role.id);
+		}
+
+		for (let i = 1; i < 10; i++) {
+			const p = cmd.options.get("role_del_"+i);
+			if(!p || !p.role) break;
+			rolesDel.push(p.role.id);
+		}
+
+		const configs:InactivityConfig = {
+			days,
+			daysWarn,
+			rolesAdd,
+			rolesDel,
+		}
+
+		StorageController.setData(cmd.guildId, StorageController.INACTIVITY_CONFIGS, configs);
 	}
 }
 
@@ -988,4 +1068,11 @@ interface Birthday {
 	day:number;
 	month:number;
 	lastAlert?:number;
+}
+
+interface InactivityConfig {
+	days:number;
+	daysWarn:number;
+	rolesAdd:string[];
+	rolesDel:string[];
 }

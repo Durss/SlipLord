@@ -17,6 +17,7 @@ export class StorageController {
 	public static BIRTHDAY_CHANNEL:string = "BIRTHDAY_CHANNEL";
 	public static BIRTHDAYS:string = "BIRTHDAYS";
 	public static TWITCH_USERS:string = "TWITCH_USERS";
+	public static INACTIVITY_CONFIGS:string = "INACTIVITY_CONFIGS";
 	
 	constructor() {
 	}
@@ -37,7 +38,14 @@ export class StorageController {
 		this.app.get("/api/store", (req:Request,res:Response) => this.get(req,res));
 	}
 
-	public static saveData(guildId:string, key:string, value:any):void {
+	/**
+	 * Saves a data to the store
+	 * 
+	 * @param guildId 
+	 * @param key 
+	 * @param value 
+	 */
+	public static setData(guildId:string, key:string, value:any):void {
 		if(!StorageController.cacheData[guildId]) {
 			StorageController.cacheData[guildId] = {};
 		}
@@ -45,6 +53,13 @@ export class StorageController {
 		StorageController.saveCache(guildId);
 	}
 
+	/**
+	 * Gets data from the store 
+	 * 
+	 * @param guildId 
+	 * @param key 
+	 * @returns 
+	 */
 	public static getData(guildId:string, key:string):any {
 		if(!StorageController.cacheData[guildId]){
 			this.loadCache(guildId);
@@ -52,6 +67,22 @@ export class StorageController {
 		return StorageController.cacheData[guildId][key];
 	}
 
+	/**
+	 * Deletes data from the store
+	 * 
+	 * @param guildId 
+	 * @param key 
+	 */
+	public static delData(guildId:string, key:string):void {
+		delete StorageController.cacheData[guildId][key];
+		StorageController.saveCache(guildId);
+	}
+
+	/**
+	 * Deletes the store
+	 * 
+	 * @param guildId 
+	 */
 	public static deleteStore(guildId:string):any {
 		let path = this.cachepath + guildId + "/";
 		//Create directory structure if not exists

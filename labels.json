@@ -3,7 +3,7 @@
 		"language": "English",
 		"admin":{
 			"install": {
-				"done":":white_check_mark: Installation complete",
+				"done":":white_check_mark: Installation complete.\nYou may want to manage permissions for each installed commands under `Server parameters => Integrations => Bots and apps`",
 				"intro":"Select the commands you'd like to install for this Discord server on the list bellow",
 				"selector_placeholder":"Select...",
 				"all": {
@@ -31,8 +31,12 @@
 					"description":"Allow members to set their birthdate to get notified"
 				},
 				"remove": {
-					"label":"Remove all",
+					"label":"🗑️ Remove all",
 					"description":"Uninstall all commands"
+				},
+				"inactivity": {
+					"label":"Users inactivity",
+					"description":"Configure an inactivity delay after which users' roles are changed"
 				}
 			},
 			"role_allowed": ":white_check_mark: The role <@&{role}> has been allowed to use admin commands",
@@ -65,6 +69,15 @@
 					"description": "Enable or disable twitch live notifications",
 					"watch": "The twitch login of the channel to start watching",
 					"unwatch": "The twitch login of the channel to stop watching"
+				},
+				"inactivity": {
+					"description": "Define a number of days after which a user will be considered inactive",
+					"days": "Number of days after which a user will be considered inactive and her/his roles updates",
+					"days_warn": "Number of inactive days after which a user will receive a warning via DM",
+					"disable": "Disable the inactivity delay",
+					"disable_ok": ":white_check_mark: The inactivity delay has been disabled successfully",
+					"role_add": "Role to add when member becomes inactive",
+					"role_del": "Role to remove when member becomes inactive"
 				}
 			},
 			"birthday": {
@@ -121,7 +134,7 @@
 		"language": "Français",
 		"admin":{
 			"install": {
-				"done":":white_check_mark: Installation effectuée",
+				"done":":white_check_mark: Installation effectuée.\nPensez à configurer les accès pour chaque commande dans `Paramètres du serveur => Intégrations => Bots et applications`",
 				"intro":"Sélectionne les commandes que tu souhaites installer sur ce serveur Discord dans la liste ci-dessous",
 				"selector_placeholder":"Sélection...",
 				"all": {
@@ -149,8 +162,12 @@
 					"description":"Permettre aux membre de définir leur anniversaire pour en recevoir des alertes"
 				},
 				"remove": {
-					"label":"Tout supprimer",
+					"label":"🗑️ Tout supprimer",
 					"description":"Supprimer toutes les commandes installées"
+				},
+				"inactivity": {
+					"label":"Timer d'inactivité",
+					"description":"Configurer un délais d'inactivité après lequel les rôles d'un membre seront changés"
 				}
 			},
 			"role_allowed": ":white_check_mark: Le rôle <@&{role}> est maintenant autorisé à utiliser les commandes d'admin",
@@ -178,11 +195,20 @@
 					"description":"Change la langue du bot",
 					"param": "Langage à utiliser"
 				},
-				"birthday": "Définit ce channel comme le cible des annonces d'anniversaires",
+				"birthday": "Définit ce channel comme la cible des annonces d'anniversaires",
 				"twitch": {
 					"description": "Active ou désactive les notifications de live twitch",
 					"watch": "Login Twitch dont annoncer les lives",
 					"unwatch": "Login Twitch dont arrêter les notifications"
+				},
+				"inactivity": {
+					"description": "Définir un délais d'inactivité après lequel les rôles d'un membre seront changés",
+					"days": "Nombre de jours inactif après lequel les rôles d'un membre seront changés",
+					"days_warn": "Nombre de jours inactifs après lequel un membre sera alerté par DM",
+					"disable": "Désactiver le délais d'inactivité",
+					"disable_ok": ":white_check_mark: Le délais d'inactivité a bien été désactivé",
+					"role_add": "Role à ajouter quand le membre est inactif",
+					"role_del": "Role à supprimer quand le membre est inactif"
 				}
 			},
 			"birthday": {
