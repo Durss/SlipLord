@@ -18,6 +18,7 @@ export class StorageController {
 	public static BIRTHDAYS:string = "BIRTHDAYS";
 	public static TWITCH_USERS:string = "TWITCH_USERS";
 	public static INACTIVITY_CONFIGS:string = "INACTIVITY_CONFIGS";
+	public static SUPPORT_TARGET:string = "SUPPORT_TARGET";
 	
 	constructor() {
 	}

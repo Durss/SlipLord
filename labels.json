@@ -37,6 +37,10 @@
 				"inactivity": {
 					"label":"Users inactivity",
 					"description":"Configure an inactivity delay after which users' roles are changed"
+				},
+				"support": {
+					"label":"Support system",
+					"description":"Allow to configure a support system"
 				}
 			},
 			"role_allowed": ":white_check_mark: The role <@&{role}> has been allowed to use admin commands",
@@ -90,6 +94,17 @@
 				"anon": "Should votes be anonnymous?",
 				"unique": "Can user vote for only one option? (only works if anonvotes is true)",
 				"option": "Option N°{X}"
+			},
+			"support": {
+				"description": "Support system",
+				"target": {
+					"description": "Set the category target for the support channels",
+					"option": "category ID"
+				},
+				"cta": {
+					"description": "Send the support ticket creation form",
+					"option": "Message posted with the form"
+				}
 			}
 		},
 		"roles": {
@@ -120,6 +135,13 @@
 			"invalid_date": "The specified date is invalid. Format must be the following : `{FORMAT}`",
 			"success": ":white_check_mark: Your birthday has been set to **{date}**",
 			"alert": "**🎉 🎊 Today is <@{user}>'s birthday 🎊 🎉**\nHappy birthday !"
+		},
+		"support": {
+			"channel_name": "{USER}",
+			"create": "☎️ Create a ticket",
+			"configure_success": ":white_check_mark: The target category has been set to #{TARGET}",
+			"creation_success": ":white_check_mark: The private support channel <#{TARGET}> has been created",
+			"invalid_chan_type": "❌ The specified target #{TARGET} is not a category"
 		}
 	},
 
@@ -168,6 +190,10 @@
 				"inactivity": {
 					"label":"Timer d'inactivité",
 					"description":"Configurer un délais d'inactivité après lequel les rôles d'un membre seront changés"
+				},
+				"support": {
+					"label":"Système de support",
+					"description":"Permet de configurer un système de support"
 				}
 			},
 			"role_allowed": ":white_check_mark: Le rôle <@&{role}> est maintenant autorisé à utiliser les commandes d'admin",
@@ -221,6 +247,17 @@
 				"anon": "Votes anonymes ?",
 				"unique": "Autoriser 1 vote max/personne ? (ne fonctionne qu'en mode anonyme)",
 				"option": "Option N°{X}"
+			},
+			"support": {
+				"description": "Système de support",
+				"target": {
+					"description": "Définir la categorie dans laquelle créer des chans de support",
+					"option": "ID de la catégorie"
+				},
+				"cta": {
+					"description": "Poster le formulaire de support",
+					"option": "Message posté avec le formulaire"
+				}
 			}
 		},
 		"roles": {
@@ -250,7 +287,14 @@
 		"birthday": {
 			"invalid_date": "La date spécifiée est invalide. Elle doit être au format suivant : `{FORMAT}`",
 			"success": ":white_check_mark: Ton anniversaire a bien été enregistré pour le **{date}**",
-			"alert": "**🎉 🎊 Aujourd'hui c'est l'anniversaire de <@{user}> 🎊 🎉**\nHappy birthday !"
+			"alert": "**🎉 🎊 Aujourd'hui c'est l'anniversaire de <@{user}> 🎊 🎉**\nJoyeux anniversaire !"
+		},
+		"support": {
+			"channel_name": "{USER}",
+			"create": "☎️ Créer un ticket",
+			"configure_success": ":white_check_mark: La catégorie cible a bien été configurée sur <#{TARGET}>",
+			"creation_success": ":white_check_mark: Le cannal privé de support <#{TARGET}> a été créé",
+			"invalid_chan_type": "❌ La cible spécifiée <#{TARGET}> n'est pas une catégorie"
 		}
 	}
 }
