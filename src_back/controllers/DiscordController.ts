@@ -2,7 +2,7 @@ import { SlashCommandBuilder } from "@discordjs/builders";
 import { REST } from "@discordjs/rest";
 import { Routes } from "discord-api-types/v9";
 import * as Discord from "discord.js";
-import { ApplicationCommandPermissionTypes, ChannelTypes } from "discord.js/typings/enums";
+import { ApplicationCommandPermissionTypes } from "discord.js/typings/enums";
 import { Express } from "express-serve-static-core";
 import Config from "../utils/Config";
 import { Event, EventDispatcher } from "../utils/EventDispatcher";
@@ -63,6 +63,7 @@ export default class DiscordController extends EventDispatcher {
 		this.client.on("messageReactionRemove", (reaction) => this.onRemoveReaction(reaction as Discord.MessageReaction));
 		//Called when a new member joins the server
 		this.client.on("guildMemberAdd", (member) => this.onAddMember(member))
+		this.client.on("guildMemberRemove", (member) => this.onRemoveMember(member))
 		//Called when bot is added to a new discord
 		// this.client.on("guildCreate", (guild) => this.installCommands(guild) );
 		//Called when bot is kicked out a discord
@@ -406,6 +407,18 @@ export default class DiscordController extends EventDispatcher {
 					cmd.editReply(Label.get(lang, "admin.birthday_chan_ok"));
 					break;
 				}
+				
+				case "admin/leave_notification": {
+					await cmd.deferReply({ephemeral:true});
+					const chan = cmd.options.getChannel("channel");
+					if(chan.type == "GUILD_TEXT") {
+						StorageController.setData(cmd.guildId, StorageController.LEAVE_CHANNEL, cmd.channelId);
+						cmd.editReply(Label.get(lang, "admin.leave_chan_ok", [{id:"target", value:chan.id}]));
+					}else{
+						cmd.editReply(Label.get(lang, "admin.leave_chan_ko", [{id:"target", value:chan.id}]));
+					}
+					break;
+				}
 	
 				case "support/target": {
 					await cmd.deferReply({ephemeral:true});
@@ -585,6 +598,19 @@ export default class DiscordController extends EventDispatcher {
 	}
 
 	/**
+	 * Called when someone leaves the discord server
+	 * @param member 
+	 */
+	private async onRemoveMember(member:Discord.GuildMember | Discord.PartialGuildMember):Promise<void> {
+		console.log("Member left !", member.user.tag);
+		const lang = this.lang(member.guild.id);
+		console.log("lang", lang);
+		const chanId = StorageController.getData(member.guild.id, StorageController.LEAVE_CHANNEL);
+		const channel = await member.guild.channels.fetch(chanId) as Discord.TextChannel;
+		channel.send(Label.get(lang, "admin.leave_chan_notification", [{id:"user", value:member.user.tag}]));
+	}
+
+	/**
 	 * Sends the install card to allow enabling features as commands
 	 * @param message 
 	 */
@@ -599,7 +625,7 @@ export default class DiscordController extends EventDispatcher {
 		listItems.push( { label: Label.get(lang, "admin.install.twitch.label"),		value: "twitch_live",		description:Label.get(lang, "admin.install.twitch.description") } );
 		listItems.push( { label: Label.get(lang, "admin.install.poll.label"),		value: "poll",				description:Label.get(lang, "admin.install.poll.description") } );
 		listItems.push( { label: Label.get(lang, "admin.install.birthday.label"),	value: "birthday",			description:Label.get(lang, "admin.install.birthday.description") } );
-		listItems.push( { label: Label.get(lang, "admin.install.inactivity.label"),	value: "inactivity",		description:Label.get(lang, "admin.install.inactivity.description") } );
+		// listItems.push( { label: Label.get(lang, "admin.install.inactivity.label"),	value: "inactivity",		description:Label.get(lang, "admin.install.inactivity.description") } );
 		listItems.push( { label: Label.get(lang, "admin.install.remove.label"),		value: "remove_all",		description:Label.get(lang, "admin.install.remove.description") } );
 
 		const list = new Discord.MessageSelectMenu()
@@ -619,19 +645,28 @@ export default class DiscordController extends EventDispatcher {
 	 * Creates the bot's commands and add them to the specified guild
 	 */
 	private async installCommands(guild?:Discord.Guild, cmd?:Discord.SelectMenuInteraction):Promise<void> {
-		const langChoices = [];
+		const langChoices:{   
+			name: string,
+			value: string,
+		}[] = [];
+		const langChoicesRaw = [];
 		const locales = Label.getLocales();
 		for (let i = 0; i < locales.length; i++) {
 			const l = locales[i];
-			langChoices.push([l.name, l.id]);
+			langChoicesRaw.push(l.name, l.id);
+			langChoices.push({
+				name:l.name,
+				value:l.id
+			});
 		}
 
 		const lang = this.lang(guild.id);
 		
 		const roles = new SlashCommandBuilder()
-			.setDefaultPermission(false)
+			.setDefaultMemberPermissions(Discord.Permissions.FLAGS.ADMINISTRATOR)
 			.setName(Config.CMD_PREFIX+'roles_selector')
-			.setDescription(Label.get(lang, "commands.role_selector.description"))
+			.setDescription(Label.get(lang, "commands.role_selector.description"));
+			
 		for (let i = 1; i <= 20; i++) {
 			roles.addRoleOption((option) => {
 				option.setName('role'+i)
@@ -643,8 +678,10 @@ export default class DiscordController extends EventDispatcher {
 			})
 		}
 		
+		console.log(">>>",Label.get(lang, "commands.admin.leave.description"));
+		console.log(">>>",Label.get(lang, "commands.admin.leave.param"));
 		const admin = new SlashCommandBuilder()
-			.setDefaultPermission(false)
+			.setDefaultMemberPermissions(Discord.Permissions.FLAGS.ADMINISTRATOR)
 			.setName(Config.CMD_PREFIX+'admin')
 			.setDescription(Label.get(lang, "commands.admin.description"))
 			//No more need for this after new native permissions system
@@ -661,16 +698,35 @@ export default class DiscordController extends EventDispatcher {
 				subcommand
 					.setName('language')
 					.setDescription(Label.get(lang, "commands.admin.language.description"))
-					.addStringOption(option => option.setRequired(true).setName('lang').setDescription(Label.get(lang, "commands.admin.language.param")).addChoices(langChoices))
+					.addStringOption(option => {
+							option.setRequired(true)
+							.setName('lang')
+							.setDescription(Label.get(lang, "commands.admin.language.param"));
+							for (let i = 0; i < langChoices.length; i++) {
+								option.addChoices(langChoices[i])
+							}
+							return option;
+						}
+					)
 			)
 			.addSubcommand(subcommand =>
 				subcommand
 					.setName('birthday_target')
 					.setDescription(Label.get(lang, "commands.admin.birthday"))
+			)
+			.addSubcommand(subcommand =>
+				subcommand
+					.setName('leave_notification')
+					.setDescription(Label.get(lang, "commands.admin.leave.description"))
+					.addChannelOption(option => option.setRequired(true)
+						.setName('channel')
+						.setDescription(Label.get(lang, "commands.admin.leave.param"))
+					)
 			);
+			
 		
 		const inactivity = new SlashCommandBuilder()
-			.setDefaultPermission(false)
+			.setDefaultMemberPermissions(Discord.Permissions.FLAGS.ADMINISTRATOR)
 			.setName(Config.CMD_PREFIX+'inactivity')
 			.setDescription(Label.get(lang, "commands.admin.inactivity.description"))
 			.addNumberOption(option => option.setRequired(true).setName('days').setDescription(Label.get(lang, "commands.admin.inactivity.days")))
@@ -688,11 +744,11 @@ export default class DiscordController extends EventDispatcher {
 			.addRoleOption(option => option.setName('role_del_5').setDescription(Label.get(lang, "commands.admin.inactivity.role_del")));
 
 		const twitch = new SlashCommandBuilder()
-			.setDefaultPermission(false)
+			.setDefaultMemberPermissions(Discord.Permissions.FLAGS.ADMINISTRATOR)
 			.setName(Config.CMD_PREFIX+'twitch')
-			.setDescription(Label.get(lang, "commands.admin.twitch.description"))
-			.addStringOption(option => option.setRequired(false).setName('watch_login').setDescription(Label.get(lang, "commands.admin.twitch.watch")))
-			.addStringOption(option => option.setRequired(false).setName('unwatch_login').setDescription(Label.get(lang, "commands.admin.twitch.unwatch")))
+			.setDescription(Label.get(lang, "commands.twitch.description"))
+			.addStringOption(option => option.setRequired(false).setName('watch_login').setDescription(Label.get(lang, "commands.twitch.watch")))
+			.addStringOption(option => option.setRequired(false).setName('unwatch_login').setDescription(Label.get(lang, "commands.twitch.unwatch")))
 		
 		const poll = new SlashCommandBuilder()
 			.setName(Config.CMD_PREFIX+'poll')
@@ -716,7 +772,7 @@ export default class DiscordController extends EventDispatcher {
 		console.log(Label.get(lang, "commands.support.cta.description"));
 		console.log(Label.get(lang, "commands.support.description"));
 		const support = new SlashCommandBuilder()
-			.setDefaultPermission(false)
+			.setDefaultMemberPermissions(Discord.Permissions.FLAGS.ADMINISTRATOR)
 			.setName(Config.CMD_PREFIX+'support')
 			.setDescription(Label.get(lang, "commands.support.description"))
 			.addSubcommand(subcommand =>
@@ -724,7 +780,7 @@ export default class DiscordController extends EventDispatcher {
 					.setName('target')
 					.setDescription(Label.get(lang, "commands.support.target.description"))
 					.addChannelOption(option => option.setRequired(true).setName('category').setDescription(Label.get(lang, "commands.support.target.option")))
-					)
+			)
 			.addSubcommand(subcommand =>
 				subcommand
 				.setName('form')
@@ -741,7 +797,7 @@ export default class DiscordController extends EventDispatcher {
 		if(all || cmd.values.indexOf("poll") > -1)				list.push(poll.toJSON());
 		if(all || cmd.values.indexOf("twitch_live") > -1)		list.push(twitch.toJSON());
 		if(all || cmd.values.indexOf("birthday") > -1)			list.push(birthday.toJSON());
-		if(all || cmd.values.indexOf("inactivity") > -1)		list.push(inactivity.toJSON());
+		// if(all || cmd.values.indexOf("inactivity") > -1)		list.push(inactivity.toJSON());
 
 		console.log("Adding ", list.length, " commands");
 		

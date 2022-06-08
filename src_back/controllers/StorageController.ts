@@ -15,6 +15,7 @@ export class StorageController {
 	public static ANON_POLLS:string = "ANON_POLLS";
 	public static LANGUAGE:string = "LANGUAGE";
 	public static BIRTHDAY_CHANNEL:string = "BIRTHDAY_CHANNEL";
+	public static LEAVE_CHANNEL:string = "LEAVE_CHANNEL";
 	public static BIRTHDAYS:string = "BIRTHDAYS";
 	public static TWITCH_USERS:string = "TWITCH_USERS";
 	public static INACTIVITY_CONFIGS:string = "INACTIVITY_CONFIGS";
