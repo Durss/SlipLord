@@ -678,8 +678,6 @@ export default class DiscordController extends EventDispatcher {
 			})
 		}
 		
-		console.log(">>>",Label.get(lang, "commands.admin.leave.description"));
-		console.log(">>>",Label.get(lang, "commands.admin.leave.param"));
 		const admin = new SlashCommandBuilder()
 			.setDefaultMemberPermissions(Discord.Permissions.FLAGS.ADMINISTRATOR)
 			.setName(Config.CMD_PREFIX+'admin')
@@ -767,10 +765,6 @@ export default class DiscordController extends EventDispatcher {
 			.setDescription(Label.get(lang, "commands.birthday.description"))
 			.addStringOption(option => option.setRequired(true).setName('date').setDescription(Label.get(lang, "commands.birthday.option")))
 
-		console.log(Label.get(lang, "commands.support.target.description"));
-		console.log(Label.get(lang, "commands.support.target.option"));
-		console.log(Label.get(lang, "commands.support.cta.description"));
-		console.log(Label.get(lang, "commands.support.description"));
 		const support = new SlashCommandBuilder()
 			.setDefaultMemberPermissions(Discord.Permissions.FLAGS.ADMINISTRATOR)
 			.setName(Config.CMD_PREFIX+'support')
