@@ -85,13 +85,15 @@ export default class TwitchUtils {
 	public static async getStreamsInfos(logins:string[]|null, ids?:string[], failSafe:boolean = true):Promise<TwitchTypes.StreamInfo[]> {
 		await this.getClientCredentialToken();//This will refresh the token if necessary
 
+		let params = "";
 		if(logins) {
 			logins = logins.filter(v => v != null && v != undefined);
-		}else{
+			params = "user_login="+logins.join("&user_login=")
+		}else if(ids){
 			ids = ids.filter(v => v != null && v != undefined);
+			params = "user_id="+ids.join("&user_id=");
 		}
 
-		let params = logins ? "user_login="+logins.join("&user_login=") : "user_id="+ids.join("&user_id=");
 		let url = "https://api.twitch.tv/helix/streams?"+params;
 		
 		let result = await fetch(url, {

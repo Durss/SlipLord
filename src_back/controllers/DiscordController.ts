@@ -326,9 +326,6 @@ export default class DiscordController extends EventDispatcher {
 						}
 					}
 
-					//If no role has been deleted we need to wait a little
-					//before replying to after a deferReply() or Discord
-					if(!roleDeleted) await Utils.promisedTimeout(1000);
 					const m = await interaction.editReply(Label.get(lang, "roles.del_all_ok", [{id:"user", value:user.id}]));
 					await Utils.promisedTimeout(10000);
 					if(m.type == "REPLY") await m.delete();

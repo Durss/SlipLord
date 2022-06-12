@@ -83,7 +83,7 @@ export default class Config {
 			let json = fs.readFileSync(this.CONFIGS_PATH, "utf8");
 			this._CONFIGS_CACHE = JSON.parse(json);
 		}
-		return this._CONFIGS_CACHE[key];
+		return (this._CONFIGS_CACHE as {[key: string]: string})[key];
 	}
 
 
