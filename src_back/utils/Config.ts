@@ -9,7 +9,7 @@ export default class Config {
 
 	private static _ENV_NAME: EnvName;
 	private static _CONF_PATH: string = "env.conf";
-	private static _CONFIGS_CACHE:{[key:string]:string} = null;
+	private static _CONFIGS_CACHE:{[key:string]:string}|null = null;
 	
 	public static TWITCH_API_PATH:string = "https://api.twitch.tv/helix/";
 	

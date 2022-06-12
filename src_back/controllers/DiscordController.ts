@@ -11,6 +11,7 @@ import Logger from '../utils/Logger';
 import TwitchUtils, { TwitchTypes } from "../utils/TwitchUtils";
 import Utils from "../utils/Utils";
 import { AnonPoll, AnonPollOption, StorageController, TwitchLiveMessage, TwitchUser } from "./StorageController";
+import {RESTPostAPIApplicationCommandsJSONBody } from 'discord-api-types/v10';
 
 /**
 * Created : 15/10/2020 
@@ -160,7 +161,7 @@ export default class DiscordController extends EventDispatcher {
 				const user = users[i];
 				if(user.uid != uid) continue;
 
-				let editedMessage :Discord.Message;
+				let editedMessage :Discord.Message|null = null;
 				const channel = this.client.channels.cache.get(user.channel) as Discord.TextChannel;
 				const historyKey = user.uid +"_"+user.channel+"_"+guild.id;
 				
@@ -279,7 +280,7 @@ export default class DiscordController extends EventDispatcher {
 			if(polls) {
 				for (let i = 0; i < polls.length; i++) {
 					const poll = polls[i];
-					const chan = await guild.channels.cache.get(poll.chan).fetch() as Discord.TextChannel;
+					const chan = await guild.channels.cache.get(poll.chan)?.fetch() as Discord.TextChannel;
 					try {
 						//Simply load the message in cache to receive the reactions updates
 						await chan.messages.fetch(poll.id);
@@ -302,12 +303,12 @@ export default class DiscordController extends EventDispatcher {
 	 * @returns 
 	 */
 	private async onCommand(interaction:Discord.Interaction):Promise<void> {
-		let lang = this.lang(interaction.guildId);
-		let user = await interaction.guild.members.fetch(interaction.user.id);
-		if(interaction.isButton()) {
+		let lang = this.lang(interaction.guildId as string);
+		let user = await interaction.guild?.members.fetch(interaction.user.id);
+		if(interaction.isButton() && user) {
 			switch(interaction.customId){
 				case "roles_delete_all": {
-					interaction.deferReply();
+					await interaction.deferReply();
 					//Delete all roles of the user
 					let roleDeleted = false;
 					const users = user.roles.cache.entries();
@@ -342,13 +343,13 @@ export default class DiscordController extends EventDispatcher {
 		}
 
 		//If it's a menu selection
-		if(interaction.isSelectMenu()) {
+		if(user && interaction.isSelectMenu()) {
 			const cmd = interaction as Discord.SelectMenuInteraction;
 			let action = cmd.customId;
 			switch(action) {
 				case "install_selector":{
 					await interaction.deferUpdate();
-					await this.installCommands(cmd.guild, cmd);
+					if(cmd.guild) await this.installCommands(cmd.guild, cmd);
 					//Reset menu selection
 					await interaction.editReply({ content: interaction.message.content});
 					break;
@@ -363,13 +364,15 @@ export default class DiscordController extends EventDispatcher {
 					await interaction.editReply({ content: interaction.message.content });
 
 					//Confirm roles update
-					const answer = await interaction.channel.send(Label.get(lang, "roles.add_ok", [{id:"user", value:user.id}]));
-					setTimeout(async _=> {
-						//Delete confirmation
-						try {
-							await answer.delete();
-						}catch(error) {};
-					}, 10000);
+					const answer = await interaction.channel?.send(Label.get(lang, "roles.add_ok", [{id:"user", value:user.id}]));
+					if(answer) {
+						setTimeout(async _=> {
+							//Delete confirmation
+							try {
+								await answer.delete();
+							}catch(error) {};
+						}, 10000);
+					}
 					break;
 				}
 			}
@@ -388,22 +391,17 @@ export default class DiscordController extends EventDispatcher {
 			console.log(action);
 	
 			switch(action) {
-				case "admin/access": {
-					this.setAccessTo(cmd);
-					break;
-				}
-				
 				case "admin/language": {
 					await cmd.deferReply({ephemeral:true});
-					lang = cmd.options.get("lang").value as string;
-					StorageController.setData(cmd.guildId, StorageController.LANGUAGE, lang);
+					lang = cmd.options.get("lang")?.value as string;
+					StorageController.setData(cmd.guildId as string, StorageController.LANGUAGE, lang);
 					cmd.editReply(Label.get(lang, "admin.language_updated"));
 					break;
 				}
 				
 				case "admin/birthday_target": {
 					await cmd.deferReply({ephemeral:true});
-					StorageController.setData(cmd.guildId, StorageController.BIRTHDAY_CHANNEL, cmd.channelId);
+					StorageController.setData(cmd.guildId as string, StorageController.BIRTHDAY_CHANNEL, cmd.channelId);
 					cmd.editReply(Label.get(lang, "admin.birthday_chan_ok"));
 					break;
 				}
@@ -411,10 +409,10 @@ export default class DiscordController extends EventDispatcher {
 				case "admin/leave_notification": {
 					await cmd.deferReply({ephemeral:true});
 					const chan = cmd.options.getChannel("channel");
-					if(chan.type == "GUILD_TEXT") {
-						StorageController.setData(cmd.guildId, StorageController.LEAVE_CHANNEL, cmd.channelId);
+					if(chan?.type == "GUILD_TEXT") {
+						StorageController.setData(cmd.guildId as string, StorageController.LEAVE_CHANNEL, cmd.channelId);
 						cmd.editReply(Label.get(lang, "admin.leave_chan_ok", [{id:"target", value:chan.id}]));
-					}else{
+					}else if(chan){
 						cmd.editReply(Label.get(lang, "admin.leave_chan_ko", [{id:"target", value:chan.id}]));
 					}
 					break;
@@ -423,10 +421,10 @@ export default class DiscordController extends EventDispatcher {
 				case "support/target": {
 					await cmd.deferReply({ephemeral:true});
 					const chan = cmd.options.getChannel("category");
-					if(chan.type == "GUILD_CATEGORY") {
-						StorageController.setData(cmd.guildId, StorageController.SUPPORT_TARGET, chan.id);
+					if(chan?.type == "GUILD_CATEGORY") {
+						StorageController.setData(cmd.guildId as string, StorageController.SUPPORT_TARGET, chan.id);
 						cmd.editReply(Label.get(lang, "support.configure_success", [{id:"target", value:chan.id}]));
-					}else{
+					}else if(chan){
 						cmd.editReply(Label.get(lang, "support.invalid_chan_type", [{id:"target", value:chan.id}]));
 					}
 					break;
@@ -482,11 +480,11 @@ export default class DiscordController extends EventDispatcher {
 	 * @param text 
 	 */
 	private async parseCommand(message:Discord.Message):Promise<void> {
-		let isAdmin = message.member.permissions.has("ADMINISTRATOR");
+		let isAdmin = message.member?.permissions.has("ADMINISTRATOR");
 		
 		let txt = message.content.substring(1);
 		let chunks = txt.split(/\s/gi);
-		let	cmd = chunks.shift().toLowerCase();
+		let	cmd = (chunks.shift() as string).toLowerCase();
 		let prefix = Config.BOT_NAME.toLowerCase();
 		
 		if(cmd.indexOf(prefix) != 0) return;
@@ -499,10 +497,10 @@ export default class DiscordController extends EventDispatcher {
 				break;
 			}
 			case "test": {
-				const lang = this.lang(message.guildId);
-				const chanName = Label.get(lang, "support.channel_name", [{id:"user", value:message.member.displayName}]);
-				console.log(lang, Label.get(lang, "support.channel_name"), chanName, message.member.displayName);
-				const chan = await message.guild.channels.create(chanName, { 
+				const lang = this.lang(message.guildId as string);
+				const chanName = Label.get(lang, "support.channel_name", [{id:"user", value:message.member?.displayName as string}]);
+				console.log(lang, Label.get(lang, "support.channel_name"), chanName, message.member?.displayName);
+				const chan = await message.guild?.channels.create(chanName, { 
 					type: "GUILD_TEXT", // syntax has changed a bit
 					permissionOverwrites: [{ // same as before
 						id: message.guild.id,
@@ -510,7 +508,9 @@ export default class DiscordController extends EventDispatcher {
 						deny: [Discord.Permissions.FLAGS.VIEW_CHANNEL],
 					}]
 				});
-				chan.permissionOverwrites.create(message.member, {VIEW_CHANNEL:true});
+				if(chan) {
+					chan.permissionOverwrites.create(message.member as Discord.GuildMember, {VIEW_CHANNEL:true});
+				}
 				message.channel.send("Channel Created!");
 				break;
 			}
@@ -530,7 +530,7 @@ export default class DiscordController extends EventDispatcher {
 				}
 				
 				const streamDetails = streamInfos[0];
-				let card = this.buildLiveCard(message.guildId, streamDetails, user, true);
+				let card = this.buildLiveCard(message.guildId as string, streamDetails, user, true);
 				await message.channel.send({embeds:[card]});
 				break;
 			}
@@ -541,7 +541,7 @@ export default class DiscordController extends EventDispatcher {
 	 * Called when someone uses a reaction on a message
 	 */
 	private async onAddReaction(reaction:Discord.MessageReaction):Promise<void> {
-		let anonPolls = StorageController.getData(reaction.message.guildId, StorageController.ANON_POLLS) as AnonPoll[];
+		let anonPolls = StorageController.getData(reaction.message.guildId as string, StorageController.ANON_POLLS) as AnonPoll[];
 		if(anonPolls){
 			//Check if react to an anon poll and update it if so
 			for (let i = 0; i < anonPolls.length; i++) {
@@ -553,7 +553,7 @@ export default class DiscordController extends EventDispatcher {
 						const user = users.next();
 						let update = false;
 						if(user.done) break;
-						if(user.value[0] === reaction.message.author.id) continue;
+						if(user.value[0] === reaction.message.author?.id) continue;
 						p.opt.forEach(o=> {
 							if(o.e === reaction.emoji.name) {
 								if(o.v.indexOf(user.value[0]) == -1) {
@@ -573,7 +573,7 @@ export default class DiscordController extends EventDispatcher {
 					}
 				}
 			}
-			StorageController.setData(reaction.message.guildId, StorageController.ANON_POLLS, anonPolls);
+			StorageController.setData(reaction.message.guildId as string, StorageController.ANON_POLLS, anonPolls);
 		}
 	}
 
@@ -615,7 +615,7 @@ export default class DiscordController extends EventDispatcher {
 	 * @param message 
 	 */
 	private async sendInstallCard(message:Discord.Message):Promise<void> {
-		const lang = this.lang(message.guildId);
+		const lang = this.lang(message.guildId as string);
 
 		const listItems:Discord.MessageSelectOptionData[] = [];
 		listItems.push( { label: Label.get(lang, "admin.install.all.label"),		value: "all",				description:Label.get(lang, "admin.install.all.description") } );
@@ -644,12 +644,12 @@ export default class DiscordController extends EventDispatcher {
 	/**
 	 * Creates the bot's commands and add them to the specified guild
 	 */
-	private async installCommands(guild?:Discord.Guild, cmd?:Discord.SelectMenuInteraction):Promise<void> {
+	private async installCommands(guild:Discord.Guild, cmd:Discord.SelectMenuInteraction):Promise<void> {
 		const langChoices:{   
 			name: string,
 			value: string,
 		}[] = [];
-		const langChoicesRaw = [];
+		const langChoicesRaw:string[] = [];
 		const locales = Label.getLocales();
 		for (let i = 0; i < locales.length; i++) {
 			const l = locales[i];
@@ -783,7 +783,7 @@ export default class DiscordController extends EventDispatcher {
 			);
 
 
-		const list = [];
+		const list:RESTPostAPIApplicationCommandsJSONBody[] = [];
 		const all =  cmd.values.indexOf("all") > -1;
 		if(all || cmd.values.indexOf("admin_commands") > -1)	list.push(admin.toJSON());
 		if(all || cmd.values.indexOf("support") > -1)			list.push(support.toJSON());
@@ -827,7 +827,7 @@ export default class DiscordController extends EventDispatcher {
 			}
 		}
 		//*/
-		if(cmd) {
+		if(cmd?.channel) {
 			await cmd.channel.send(Label.get(lang, "admin.install.done"));
 		}
 	}
@@ -842,16 +842,16 @@ export default class DiscordController extends EventDispatcher {
 			watch = true;
 			key = "watch_login";
 		}
-		const lang = this.lang(cmd.guildId);
+		const lang = this.lang(cmd.guildId as string);
 		if(!Config.IS_TWITCH_CONFIGURED) {
 			cmd.reply({content:Label.get(lang, "twitch.not_configured"), ephemeral:true});
 			return;
 		}
-		const user = cmd.options.get(key).value as string;
+		const user = cmd.options.get(key)?.value as string;
 		const userRes = await TwitchUtils.loadChannelsInfo([user]);
 		if(userRes.length>0) {
 			const user = userRes[0];
-			let list = StorageController.getData(cmd.guildId, StorageController.TWITCH_USERS);
+			let list = StorageController.getData(cmd.guildId as string, StorageController.TWITCH_USERS);
 			if(!list) list = [];
 			if(watch) {
 				if(list.findIndex(v=>v.uid==user.id && v.channel==cmd.channelId) == -1) {
@@ -861,7 +861,7 @@ export default class DiscordController extends EventDispatcher {
 				const index = list.findIndex(v=>v.uid==user.id);
 				if(index > -1) list.splice(index, 1);
 			}
-			StorageController.setData(cmd.guildId, StorageController.TWITCH_USERS, list);
+			StorageController.setData(cmd.guildId as string, StorageController.TWITCH_USERS, list);
 			if(watch) {
 				cmd.reply({content:Label.get(lang, "twitch.user_added", [{id:"user", value:user.display_name}]), ephemeral:true});
 				this.dispatchEvent(new Event(Event.SUB_TO_LIVE_EVENT, user.id));
@@ -939,62 +939,11 @@ export default class DiscordController extends EventDispatcher {
 	}
 
 	/**
-	 * Gives/remove access to private commandes to a user or a role
-	 * [NOT USED ANYMORE] Discord implemented a native way of managing permissions
-	 */
-	private async setAccessTo(cmd:Discord.CommandInteraction):Promise<void> {
-		await cmd.deferReply();
-		let commands = (await cmd.guild.commands.fetch()).toJSON();
-		const lang = this.lang(cmd.guildId);
-
-		//Define update parameters
-		let id:string, allow:boolean, type:ApplicationCommandPermissionTypes;
-		if(cmd.options.get("allow_role")){
-			id = cmd.options.get("allow_role").role.id;
-			allow = true;
-			type = ApplicationCommandPermissionTypes.ROLE;
-		}else if(cmd.options.get("disallow_role")){
-			id = cmd.options.get("disallow_role").role.id;
-			allow = false;
-			type = ApplicationCommandPermissionTypes.ROLE;
-		}else if(cmd.options.get("allow_user")){
-			id = cmd.options.get("allow_user").user.id;
-			allow = true;
-			type = ApplicationCommandPermissionTypes.USER;
-		}else if(cmd.options.get("disallow_user")){
-			id = cmd.options.get("disallow_user").user.id;
-			allow = false;
-			type = ApplicationCommandPermissionTypes.USER;
-		}
-
-		//Update commands
-		for (let i = 0; i < commands.length; i++) {
-			const command = commands[i];
-			if(command.defaultPermission) continue;//If it's a public command, no need to add permissions
-			const permissions = [ { id, type, permission: allow, }, ];
-			await command.permissions.add({ permissions });
-		}
-
-		//Confirm update
-		let message:string ="";
-		if(type == ApplicationCommandPermissionTypes.ROLE){
-			message = Label.get(lang, "admin.role_" + (allow?"allowed":"disallowed"), [{id:"role", value:id}]);
-		}else{
-			message = Label.get(lang, "admin.user_" + (allow?"allowed":"disallowed"), [{id:"user", value:id}]);
-		}
-
-		cmd.channel.send(message);
-		Logger.success(message);
-		const m = await cmd.fetchReply() as Discord.Message;
-		await m.delete();
-	}
-
-	/**
 	 * Sends the support form on the current channel
 	 */
 	private async sendSupportForm(cmd:Discord.CommandInteraction):Promise<void> {
 		await cmd.deferReply();
-		const lang = this.lang(cmd.guildId);
+		const lang = this.lang(cmd.guildId as string);
 		const support = new Discord.MessageButton({
 			label: Label.get(lang, "support.create"),
 			style:"DANGER",
@@ -1002,9 +951,11 @@ export default class DiscordController extends EventDispatcher {
 		})
 		const row = new Discord.MessageActionRow()
 		.addComponents([support]);
-		let message = cmd.options.get("intro").value as string;
+		let message = cmd.options.get("intro")?.value as string;
 		message = message.replace(/\\n|\\r/gi, "\n");//convert \n and \r to actual linebreaks
-		await cmd.channel.send({content:message, components:[row]});
+		if(cmd.channel) {
+			await cmd.channel.send({content:message, components:[row]});
+		}
 		const m = await cmd.fetchReply() as Discord.Message;
 		await m.delete();
 	}
@@ -1014,20 +965,22 @@ export default class DiscordController extends EventDispatcher {
 	 */
 	private async createSupport(interaction:Discord.ButtonInteraction):Promise<void> {
 		interaction.deferReply({ephemeral:true});
-		const lang = this.lang(interaction.guildId);
-		const chanTarget = StorageController.getData(interaction.guildId, StorageController.SUPPORT_TARGET) as string;
-		const chanName = Label.get(lang, "support.channel_name", [{id:"user", value:interaction.member.user.username}]);
-		const chan = await interaction.guild.channels.create(chanName, {
+		const lang = this.lang(interaction.guildId as string);
+		const chanTarget = StorageController.getData(interaction.guildId as string, StorageController.SUPPORT_TARGET) as string;
+		const chanName = Label.get(lang, "support.channel_name", [{id:"user", value:interaction.member?.user.username as string}]);
+		const chan = await interaction.guild?.channels.create(chanName, {
 			type: "GUILD_TEXT",
 			parent:chanTarget,
 			permissionOverwrites: [{
-				id: interaction.guildId,
+				id: interaction.guildId as string,
 				allow: [Discord.Permissions.FLAGS.ADMINISTRATOR],
 				deny: [Discord.Permissions.FLAGS.VIEW_CHANNEL],
 			}]
 		});
-		await chan.permissionOverwrites.create(interaction.member.user.id, {VIEW_CHANNEL:true});
-		interaction.editReply(Label.get(lang, "support.creation_success", [{id:"target", value:chan.id}]));
+		if(chan && interaction.member) {
+			await chan.permissionOverwrites.create(interaction.member.user.id, {VIEW_CHANNEL:true});
+			interaction.editReply(Label.get(lang, "support.creation_success", [{id:"target", value:chan.id}]));
+		}
 	}
 
 	/**
@@ -1035,7 +988,7 @@ export default class DiscordController extends EventDispatcher {
 	 */
 	private async sendRolesSelector(cmd:Discord.CommandInteraction):Promise<void> {
 		await cmd.deferReply();
-		const lang = this.lang(cmd.guildId);
+		const lang = this.lang(cmd.guildId as string);
 		let message = Label.get(lang, "roles.intro");
 		const selectableRoles = cmd.options.data.map(v=> v.role);
 
@@ -1043,14 +996,16 @@ export default class DiscordController extends EventDispatcher {
 		//the maximum reaction count allowed by discord
 		do {
 			let roles = selectableRoles.splice(0, this.MAX_LIST_ITEMS);
-			const listItems = [];
+			const listItems:{label:string, value:string}[] = [];
 			roles.forEach(r => {
-				listItems.push(
-					{
-						label: r.name,
-						value: r.id,
-					}
-				)
+				if(r) {
+					listItems.push(
+						{
+							label: r.name,
+							value: r.id,
+						}
+					)
+				}
 			});
 
 			const list = new Discord.MessageSelectMenu()
@@ -1062,7 +1017,9 @@ export default class DiscordController extends EventDispatcher {
 			const row = new Discord.MessageActionRow()
 			.addComponents([list]);
 
-			await cmd.channel.send({content:message, components:[row]});
+			if(cmd.channel) {
+				await cmd.channel.send({content:message, components:[row]});
+			}
 
 			if(selectableRoles.length == 0) {
 				const deleteBt = new Discord.MessageButton({
@@ -1072,7 +1029,9 @@ export default class DiscordController extends EventDispatcher {
 				})
 				const row = new Discord.MessageActionRow()
 				.addComponents([deleteBt]);
-				await cmd.channel.send({content:Label.get(lang, "roles.del_all_intro"), components:[row]});
+				if(cmd.channel) {
+					await cmd.channel.send({content:Label.get(lang, "roles.del_all_intro"), components:[row]});
+				}
 			}
 		}while(selectableRoles.length > 0);
 		const m = await cmd.fetchReply() as Discord.Message;
@@ -1084,12 +1043,12 @@ export default class DiscordController extends EventDispatcher {
 	 */
 	private async createPoll(cmd:Discord.CommandInteraction):Promise<void> {
 		await cmd.deferReply();
-		const lang = this.lang(cmd.guildId);
+		const lang = this.lang(cmd.guildId as string);
 		const options:AnonPollOption[] = [];
 		const emojis = Config.DISCORDBOT_REACTION_EMOJIS.split(" ")
 		let anonMode:boolean = false;
 		let uniqueMode:boolean = false;
-		let title:string;
+		let title:string = "";
 		for (let i = 0; i < cmd.options.data.length; i++) {
 			const p = cmd.options.data[i];
 			if(p.name=="title") title = p.value as string;
@@ -1105,26 +1064,28 @@ export default class DiscordController extends EventDispatcher {
 			return option.e + count + " ➔ "+ option.n;
 		}).join("\n");
 
-		let discordMessage = await cmd.channel.send(title + "\n" + msg);
-		options.forEach(async v => {
-			try {
-				await discordMessage.react(v.e);
-			}catch(error) {
-				console.log("Failed '"+v+"'");
+		if(cmd.channel) {
+			let discordMessage = await cmd.channel.send(title + "\n" + msg);
+			options.forEach(async v => {
+				try {
+					await discordMessage.react(v.e);
+				}catch(error) {
+					console.log("Failed '"+v+"'");
+				}
+			});
+	
+			if(anonMode) {
+				let polls:AnonPoll[] = StorageController.getData(cmd.guildId as string, StorageController.ANON_POLLS);
+				if(!polls) polls = [];
+				polls.push({
+					id: discordMessage.id,
+					chan: discordMessage.channelId,
+					title: title,
+					unique: uniqueMode,
+					opt:options,
+				})
+				StorageController.setData(cmd.guildId as string, StorageController.ANON_POLLS, polls);
 			}
-		});
-
-		if(anonMode) {
-			let polls:AnonPoll[] = StorageController.getData(cmd.guildId, StorageController.ANON_POLLS);
-			if(!polls) polls = [];
-			polls.push({
-				id: discordMessage.id,
-				chan: discordMessage.channelId,
-				title: title,
-				unique: uniqueMode,
-				opt:options,
-			})
-			StorageController.setData(cmd.guildId, StorageController.ANON_POLLS, polls);
 		}
 
 		const m = await cmd.fetchReply() as Discord.Message;
@@ -1149,10 +1110,10 @@ export default class DiscordController extends EventDispatcher {
 	private async setBirthday(cmd:Discord.CommandInteraction):Promise<void> {
 		await cmd.deferReply({ephemeral:true});
 
-		const lang = this.lang(cmd.guildId);
+		const lang = this.lang(cmd.guildId as string);
 		
-		let birthdays:BirthdayCollection = StorageController.getData(cmd.guildId, StorageController.BIRTHDAYS);
-		const date = cmd.options.get("date").value as string;
+		let birthdays:BirthdayCollection = StorageController.getData(cmd.guildId as string, StorageController.BIRTHDAYS);
+		const date = cmd.options.get("date")?.value as string;
 		const chunks = date.split(/[^0-9]+/gi);
 		const day = parseInt(chunks[0]);
 		const month = parseInt(chunks[1]);
@@ -1166,7 +1127,7 @@ export default class DiscordController extends EventDispatcher {
 		if(!birthdays) birthdays = {};
 		birthdays[cmd.user.id] = {day, month};
 
-		StorageController.setData(cmd.guildId, StorageController.BIRTHDAYS, birthdays);
+		StorageController.setData(cmd.guildId as string, StorageController.BIRTHDAYS, birthdays);
 		cmd.editReply( Label.get(lang, "birthday.success", [{id:"date", value:day+"-"+month}]));
 	}
 
@@ -1176,11 +1137,11 @@ export default class DiscordController extends EventDispatcher {
 	 * @param cmd 
 	 */
 	private async saveInactivityParams(cmd:Discord.CommandInteraction):Promise<void> {
-		const lang = this.lang(cmd.guildId);
+		const lang = this.lang(cmd.guildId as string);
 
 		cmd.deferReply({ephemeral:true});
 		if(cmd.options.get("disable")?.value === true) {
-			StorageController.delData(cmd.guildId, StorageController.INACTIVITY_CONFIGS);
+			StorageController.delData(cmd.guildId as string, StorageController.INACTIVITY_CONFIGS);
 			cmd.editReply(Label.get(lang, "commands.admin.inactivity.disable_ok"));
 			return;
 		}
@@ -1210,7 +1171,7 @@ export default class DiscordController extends EventDispatcher {
 			rolesDel,
 		}
 
-		StorageController.setData(cmd.guildId, StorageController.INACTIVITY_CONFIGS, configs);
+		StorageController.setData(cmd.guildId as string, StorageController.INACTIVITY_CONFIGS, configs);
 	}
 }
 

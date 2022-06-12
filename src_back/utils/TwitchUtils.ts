@@ -1,14 +1,12 @@
-import fetch, { Response as FetchResponse } from "node-fetch";
+import fetch from "node-fetch";
 import Config from "./Config";
-import Logger from "./Logger";
-import Utils from "./Utils";
 
 /**
 * Created : 08/07/2021 
 */
 export default class TwitchUtils {
 
-	private static _token:string;
+	private static _token:string|null;
 	private static _token_invalidation_date:number;
 	
 	constructor() {
@@ -33,7 +31,7 @@ export default class TwitchUtils {
 	 * Generates a credential token if necessary from the client and private keys
 	 * @returns 
 	 */
-	public static async getClientCredentialToken(force:boolean = false):Promise<string> {
+	public static async getClientCredentialToken(force:boolean = false):Promise<string|null> {
 		//Invalidate token if expiration date is passed
 		if(Date.now() > this._token_invalidation_date || force) this._token = null;
 		//Avoid generating a new token if one already exists
@@ -57,10 +55,10 @@ export default class TwitchUtils {
 		}
 	}
 
-	public static async loadChannelsInfo(logins:string[], ids?:string[]):Promise<TwitchTypes.UserInfo[]> {
+	public static async loadChannelsInfo(logins:string[]|null, ids:string[]|null = null):Promise<TwitchTypes.UserInfo[]> {
 		await this.getClientCredentialToken();//This will refresh the token if necessary
 	
-		let items:string[] | undefined = ids? ids : logins;
+		let items:string[] | null = ids? ids : logins;
 		if(items == undefined) return [];
 		items = items.filter(v => v != null && v != undefined);
 		items = items.map(v => encodeURIComponent(v));
@@ -84,14 +82,13 @@ export default class TwitchUtils {
 		return users;
 	}
 
-	public static async getStreamsInfos(logins:string[], ids?:string[], failSafe:boolean = true):Promise<TwitchTypes.StreamInfo[]> {
+	public static async getStreamsInfos(logins:string[]|null, ids?:string[], failSafe:boolean = true):Promise<TwitchTypes.StreamInfo[]> {
 		await this.getClientCredentialToken();//This will refresh the token if necessary
 
-		if(ids) {
-			ids = ids.filter(v => v != null && v != undefined);
-		}
 		if(logins) {
 			logins = logins.filter(v => v != null && v != undefined);
+		}else{
+			ids = ids.filter(v => v != null && v != undefined);
 		}
 
 		let params = logins ? "user_login="+logins.join("&user_login=") : "user_id="+ids.join("&user_id=");

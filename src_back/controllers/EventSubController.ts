@@ -12,8 +12,8 @@ import { Event, EventDispatcher } from "../utils/EventDispatcher";
 export default class EventSubController extends EventDispatcher {
 
 	private app:Express;
-	private url:string=null;
-	private token:string=null;
+	private url!:string;
+	private token:string|null=null;
 	private idsParsed:{[key:string]:boolean} = {};
 	private challengeCompleteCount:number = 0;
 	private challengeCompleteLogTimeout:any;
@@ -195,7 +195,7 @@ export default class EventSubController extends EventDispatcher {
 			}
 		};
 		let list:EventSubMessageSubType.Subscription[] = [];
-		let json:any, cursor:string;
+		let json:any, cursor:string = "";
 		do {
 			let url = "https://api.twitch.tv/helix/eventsub/subscriptions";
 			if(cursor) {
