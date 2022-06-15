@@ -13,19 +13,20 @@ export default class Config {
 	
 	public static TWITCH_API_PATH:string = "https://api.twitch.tv/helix/";
 	
-	public static get BOT_NAME():string { return this.getData("BOT_NAME"); 	}
-	public static get CMD_PREFIX():string { return this.getData("CMD_PREFIX"); 	}
+	public static get BOT_NAME():string { return this.getData("BOT_NAME") as string; 	}
+	public static get TIMEZONE_OFFSET():number { return this.getData("TIMEZONE_OFFSET") as number; 	}
+	public static get CMD_PREFIX():string { return this.getData("CMD_PREFIX") as string; 	}
 
-	public static get PUBLIC_SECURED_URL():string { return this.getData("PUBLIC_SECURED_URL"); 	}
+	public static get PUBLIC_SECURED_URL():string { return this.getData("PUBLIC_SECURED_URL") as string; 	}
 	
-	public static get TWITCH_EVENTSUB_SECRET():string { return this.getData("TWITCH_EVENTSUB_SECRET"); 	}
-	public static get TWITCH_APP_CLIENT_ID():string { return this.getData("TWITCH_APP_CLIENT_ID"); 	}
-	public static get TWITCH_APP_CLIENT_SECRET():string { return this.getData("TWITCH_APP_CLIENT_SECRET"); 	}
-	public static get TWITCH_APP_SCOPES():string { return this.getData("TWITCH_APP_SCOPES"); }
+	public static get TWITCH_EVENTSUB_SECRET():string { return this.getData("TWITCH_EVENTSUB_SECRET") as string; 	}
+	public static get TWITCH_APP_CLIENT_ID():string { return this.getData("TWITCH_APP_CLIENT_ID") as string; 	}
+	public static get TWITCH_APP_CLIENT_SECRET():string { return this.getData("TWITCH_APP_CLIENT_SECRET") as string; 	}
+	public static get TWITCH_APP_SCOPES():string { return this.getData("TWITCH_APP_SCOPES") as string; }
 	
-	public static get DISCORDBOT_TOKEN(): string { return this.getData("DISCORDBOT_TOKEN"); }
-	public static get DISCORDBOT_CLIENT_ID(): string { return this.getData("DISCORDBOT_CLIENT_ID"); }
-	public static get DISCORDBOT_REACTION_EMOJIS(): string { return this.getData("DISCORDBOT_REACTION_EMOJIS"); }
+	public static get DISCORDBOT_TOKEN(): string { return this.getData("DISCORDBOT_TOKEN") as string; }
+	public static get DISCORDBOT_CLIENT_ID(): string { return this.getData("DISCORDBOT_CLIENT_ID") as string; }
+	public static get DISCORDBOT_REACTION_EMOJIS(): string { return this.getData("DISCORDBOT_REACTION_EMOJIS") as string; }
 	
 	public static get envName(): string { return this._ENV_NAME;}
 
@@ -78,7 +79,7 @@ export default class Config {
 		});
 	}
 
-	private static getData(key:string):string {
+	private static getData(key:string):string|number {
 		if(!this._CONFIGS_CACHE) {
 			let json = fs.readFileSync(this.CONFIGS_PATH, "utf8");
 			this._CONFIGS_CACHE = JSON.parse(json);

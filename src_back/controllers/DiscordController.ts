@@ -109,9 +109,11 @@ export default class DiscordController extends EventDispatcher {
 			//Get all guilds refs
 			const guilds = this.client.guilds.cache.entries();
 			const today = new Date();
+			today.setHours(today.getHours() + Config.TIMEZONE_OFFSET);
 			const todayDay = today.getDate();
 			const todayMonth = today.getMonth() + 1;
 			const todayYear = today.getFullYear();
+
 
 			do {
 				const guildPointer = guilds.next();

@@ -114,6 +114,7 @@ Create a `configs.json` file at the root of the project and add this content :
 {
 	"BOT_NAME":"SlipLord",
 	"CMD_PREFIX":"",
+	"TIMEZONE_OFFSET":2,
 
 	"PUBLIC_SECURED_URL": "",
 
@@ -152,6 +153,7 @@ Set your twitch user ID on **TWITCH_USER_ID** field.\
 Create a discord app and bot [here](https://discord.com/developers/applications), and fill the **DISCORDBOT_TOKEN** with the and the **DISCORDBOT_CLIENT_ID** values.
 \
 The **CMD_PREFIX** field is here to add a prefix to all the slah commands if you wish to.
+The **TIMEZONE_OFFSET** field is here to make birthdays announcement at midnight for your physical timezone. If your server is set to UTC but you live in France *(UTC +2)*, you'll want to set `2` as the `TIMEZONE_OFFSET` offset so the birthdays are announce at midnight instead of 2am.
 <br />
 <br />
 <br />
