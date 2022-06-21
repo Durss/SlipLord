@@ -39,7 +39,7 @@ https://discord.com/api/oauth2/authorize?client_id=[BOT CLIENT ID]&permissions=8
 The bot won't automatically install slash commands after joining your server.\
 You can choose which feature to install by sending this command on a private chan *(don't forget to give read/write access to the bot)*:
 ```
-![BOT_NAME]-install
+!BOT_NAME-install
 ```
 `BOT_NAME` being the value specified on `config.json` file *(see [Project setup and config](#project-setup-and-config))*.
 <br />
