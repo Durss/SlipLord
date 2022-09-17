@@ -27,7 +27,7 @@ export default class HTTPServer {
 		this.app = <Express>express();
 		let server = http.createServer(<any>this.app);
 		SocketServer.instance.installHandler(server, {prefix:"/sock"});
-		server.listen(Config.SERVER_PORT, '0.0.0.0', null, ()=> {
+		server.listen(Config.SERVER_PORT, '0.0.0.0', undefined, ()=> {
 			Logger.success("Server ready on port " + Config.SERVER_PORT);
 		});
 
@@ -48,8 +48,8 @@ export default class HTTPServer {
 				{
 					//Avoiding rewrites for API calls and socket
 					from: /.*\/(api|sock)\/?.*$/,
-					to: function(context) {
-						return context.parsedUrl.pathname;
+					to: (context) => {
+						return context.parsedUrl.pathname as string;
 					}
 				},
 			],
@@ -113,13 +113,13 @@ export default class HTTPServer {
 			let eventSub = new EventSubController();
 			await eventSub.mount(this.app);
 			discord.addEventListener(Event.SUB_TO_LIVE_EVENT, (event:Event) => {
-				eventSub.subToUser(event.channelId);
+				eventSub.subToUser(event.channelId as string);
 			});
 			discord.addEventListener(Event.UNSUB_FROM_LIVE_EVENT, (event:Event) => {
-				eventSub.unsubUser(event.channelId);
+				eventSub.unsubUser(event.channelId as string);
 			});
 			eventSub.addEventListener(Event.DISCORD_ALERT_LIVE, (event:Event) => {
-				discord.alertLiveChannel(event.channelId);
+				discord.alertLiveChannel(event.channelId as string);
 			});
 		}
 
