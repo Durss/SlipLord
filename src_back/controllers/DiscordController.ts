@@ -387,7 +387,7 @@ export default class DiscordController extends EventDispatcher {
 			}catch(error) {}
 			
 			action = action.replace(new RegExp("^"+Config.CMD_PREFIX, "i"), "");
-			console.log(action);
+			Logger.info("Execute action", "\""+action+"\"");
 	
 			switch(action) {
 				case "admin/language": {
@@ -405,14 +405,42 @@ export default class DiscordController extends EventDispatcher {
 					break;
 				}
 				
+				case "admin/birthday_remove": {
+					await cmd.deferReply({ephemeral:true});
+
+					const lang = this.lang(cmd.guildId as string);
+					
+					let userID = cmd.options.getString("user_id");
+					const user = cmd.options.getMember("user") as Discord.GuildMember;
+					if(user) userID = user.id;
+					console.log("DELETE ", userID);
+					if(userID) {
+						let birthdays:BirthdayCollection = StorageController.getData(cmd.guildId as string, StorageController.BIRTHDAYS);
+						if(!birthdays) birthdays = {};
+						delete birthdays[userID];
+						StorageController.setData(cmd.guildId as string, StorageController.BIRTHDAYS, birthdays);
+						cmd.editReply( Label.get(lang, "commands.admin.birthday_remove.success"));
+					}else{
+						cmd.editReply( Label.get(lang, "commands.admin.birthday_remove.user_not_found"));
+					}
+
+					break;
+				}
+				
 				case "admin/leave_notification": {
 					await cmd.deferReply({ephemeral:true});
 					const chan = cmd.options.getChannel("channel");
-					if(chan?.type == "GUILD_TEXT") {
-						StorageController.setData(cmd.guildId as string, StorageController.LEAVE_CHANNEL, cmd.channelId);
-						cmd.editReply(Label.get(lang, "admin.leave_chan_ok", [{id:"target", value:chan.id}]));
-					}else if(chan){
-						cmd.editReply(Label.get(lang, "admin.leave_chan_ko", [{id:"target", value:chan.id}]));
+					const disable = cmd.options.getBoolean("disable");
+					if(disable) {
+						StorageController.delData(cmd.guildId as string, StorageController.LEAVE_CHANNEL);
+						cmd.editReply(Label.get(lang, "admin.leave_chan_disabled"));
+					}else{
+						if(chan?.type == "GUILD_TEXT") {
+							StorageController.setData(cmd.guildId as string, StorageController.LEAVE_CHANNEL, cmd.channelId);
+							cmd.editReply(Label.get(lang, "admin.leave_chan_ok", [{id:"target", value:chan.id}]));
+						}else if(chan){
+							cmd.editReply(Label.get(lang, "admin.leave_chan_ko", [{id:"target", value:chan.id}]));
+						}
 					}
 					break;
 				}
@@ -601,9 +629,11 @@ export default class DiscordController extends EventDispatcher {
 	 * @param member 
 	 */
 	private async onRemoveMember(member:Discord.GuildMember | Discord.PartialGuildMember):Promise<void> {
-		console.log("Member left !", member.user.tag);
+		const leaveChan = StorageController.LEAVE_CHANNEL;
+		if(!leaveChan) return;
+		
+		Logger.info("Member left !", member.user.tag);
 		const lang = this.lang(member.guild.id);
-		console.log("lang", lang);
 		const chanId = StorageController.getData(member.guild.id, StorageController.LEAVE_CHANNEL);
 		const channel = await member.guild.channels.fetch(chanId) as Discord.TextChannel;
 		channel.send(Label.get(lang, "admin.leave_chan_notification", [{id:"user", value:member.user.tag}]));
@@ -681,16 +711,6 @@ export default class DiscordController extends EventDispatcher {
 			.setDefaultMemberPermissions(Discord.Permissions.FLAGS.ADMINISTRATOR)
 			.setName(Config.CMD_PREFIX+'admin')
 			.setDescription(Label.get(lang, "commands.admin.description"))
-			//No more need for this after new native permissions system
-			// .addSubcommand(subcommand =>
-			// 	subcommand
-			// 		.setName('access')
-			// 		.setDescription(Label.get(lang, "commands.admin.access.description"))
-			// 		.addRoleOption(option => option.setName('allow_role').setDescription(Label.get(lang, "commands.admin.access.allow_user")))
-			// 		.addRoleOption(option => option.setName('disallow_role').setDescription(Label.get(lang, "commands.admin.access.disallow_user")))
-			// 		.addUserOption(option => option.setName('allow_user').setDescription(Label.get(lang, "commands.admin.access.allow_role")))
-			// 		.addUserOption(option => option.setName('disallow_user').setDescription(Label.get(lang, "commands.admin.access.disallow_role")))
-			// )
 			.addSubcommand(subcommand =>
 				subcommand
 					.setName('language')
@@ -713,12 +733,20 @@ export default class DiscordController extends EventDispatcher {
 			)
 			.addSubcommand(subcommand =>
 				subcommand
+					.setName('birthday_remove')
+					.setDescription(Label.get(lang, "commands.admin.birthday_remove.description"))
+					.addUserOption(option => option.setName("user").setDescription(Label.get(lang, "commands.admin.birthday_remove.user")))
+					.addStringOption(option => option.setName("user_id").setDescription(Label.get(lang, "commands.admin.birthday_remove.user_id")))
+			)
+			.addSubcommand(subcommand =>
+				subcommand
 					.setName('leave_notification')
 					.setDescription(Label.get(lang, "commands.admin.leave.description"))
-					.addChannelOption(option => option.setRequired(true)
-						.setName('channel')
+					.addChannelOption(option =>
+						option.setName('channel')
 						.setDescription(Label.get(lang, "commands.admin.leave.param"))
 					)
+					.addBooleanOption(option => option.setName('disable').setDescription(Label.get(lang, "commands.admin.leave.disable")))
 			);
 			
 		
@@ -753,10 +781,13 @@ export default class DiscordController extends EventDispatcher {
 			.addStringOption(option => option.setRequired(true).setName('title').setDescription(Label.get(lang, "commands.poll.title")))
 			.addStringOption(option => option.setRequired(true).setName('option1').setDescription(Label.get(lang, "commands.poll.option", [{id:"X", value:"1"}])))
 			.addStringOption(option => option.setRequired(true).setName('option2').setDescription(Label.get(lang, "commands.poll.option", [{id:"X", value:"2"}])))
+			.addStringOption(option => option.setName('emote1').setDescription(Label.get(lang, "commands.poll.emote", [{id:"X", value:"1"}])))
+			.addStringOption(option => option.setName('emote2').setDescription(Label.get(lang, "commands.poll.emote", [{id:"X", value:"2"}])))
 			.addBooleanOption(option => option.setName('anonvotes').setDescription(Label.get(lang, "commands.poll.anon")))
 			.addBooleanOption(option => option.setName('unique').setDescription(Label.get(lang, "commands.poll.unique")));
-		for (let i = 3; i <= 20; i++) {
+		for (let i = 3; i <= 8; i++) {
 			poll.addStringOption(option => option.setName('option'+i).setDescription(Label.get(lang, "commands.poll.option", [{id:"X", value:i.toString()}])))
+			poll.addStringOption(option => option.setName('emote'+i).setDescription(Label.get(lang, "commands.poll.emote", [{id:"X", value:i.toString()}])))
 		}
 
 		const birthday = new SlashCommandBuilder()
@@ -792,7 +823,7 @@ export default class DiscordController extends EventDispatcher {
 		if(all || cmd.values.indexOf("birthday") > -1)			list.push(birthday.toJSON());
 		// if(all || cmd.values.indexOf("inactivity") > -1)		list.push(inactivity.toJSON());
 
-		console.log("Adding ", list.length, " commands");
+		Logger.log("Adding ", list.length, " commands");
 		
 		await this.rest.put(
 			Routes.applicationGuildCommands(Config.DISCORDBOT_CLIENT_ID, guild.id),
@@ -1044,12 +1075,22 @@ export default class DiscordController extends EventDispatcher {
 		await cmd.deferReply();
 		const lang = this.lang(cmd.guildId as string);
 		const options:AnonPollOption[] = [];
-		const emojis = Config.DISCORDBOT_REACTION_EMOJIS.split(" ")
+		let emojis = Config.DISCORDBOT_REACTION_EMOJIS.split(" ");
 		let anonMode:boolean = false;
 		let uniqueMode:boolean = false;
 		let title:string = "";
+		const customEmojis:string[] = [];
 		for (let i = 0; i < cmd.options.data.length; i++) {
 			const p = cmd.options.data[i];
+			if(p.name.indexOf("emote") > -1) {
+				customEmojis.push(p.value as string);
+			}
+		}
+		emojis = customEmojis.concat(emojis);
+
+		for (let i = 0; i < cmd.options.data.length; i++) {
+			const p = cmd.options.data[i];
+			if(p.name.indexOf("emote") > -1) continue;//Already handled previously
 			if(p.name=="title") title = p.value as string;
 			else if(p.name=="anonvotes") anonMode = p.value as boolean;
 			else if(p.name=="unique") uniqueMode = p.value as boolean;
@@ -1069,7 +1110,7 @@ export default class DiscordController extends EventDispatcher {
 				try {
 					await discordMessage.react(v.e);
 				}catch(error) {
-					console.log("Failed '"+v+"'");
+					Logger.error("Failed '"+v+"'");
 				}
 			});
 	

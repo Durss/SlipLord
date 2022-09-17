@@ -50,6 +50,7 @@
 			"language_updated": ":white_check_mark: The language has been updated",
 			"birthday_chan_ok": ":white_check_mark: Birthday notifications will be sent on this channel",
 			"leave_chan_ok": ":white_check_mark: A notification will be sent on <#{TARGET}> when someone leaves the server",
+			"leave_chan_disabled": ":white_check_mark: Leave notifications are now disabled",
 			"leave_chan_ko": ":x: <#{TARGET}> is not a valid channel",
 			"leave_chan_notification": "🚨 `{user}` left the server"
 		},
@@ -65,6 +66,13 @@
 					"param": "Language to use"
 				},
 				"birthday": "Defines this channel as the target for the birthday notifications",
+				"birthday_remove": {
+					"description":"Removes birthday alerts of a member",
+					"user":"Member to remove notifications from",
+					"user_id":"User ID to remove notifications from",
+					"success":"Alerts for this user have been disabled",
+					"user_not_found":"Specified user not found"
+				},
 				"inactivity": {
 					"description": "Define a number of days after which a user will be considered inactive",
 					"days": "Number of days after which a user will be considered inactive and her/his roles updates",
@@ -76,7 +84,8 @@
 				},
 				"leave": {
 					"description": "Send a notification when someone leaves the server",
-					"param": "Channel to send the notifications to"
+					"param": "Channel to send the notifications to",
+					"disable": "Disable notifications"
 				}
 			},
 			"twitch": {
@@ -93,7 +102,8 @@
 				"title": "Title of the poll",
 				"anon": "Should votes be anonnymous?",
 				"unique": "Can user vote for only one option? (only works if anonvotes is true)",
-				"option": "Option N°{X}"
+				"option": "Option N°{X}",
+				"emote": "Emote for option N°{X}"
 			},
 			"support": {
 				"description": "Support system",
@@ -203,6 +213,7 @@
 			"language_updated": ":white_check_mark: La langue a bien été mise à jour",
 			"birthday_chan_ok": ":white_check_mark: Les anniversaires des membres seront annoncés dans ce channel",
 			"leave_chan_ok": ":white_check_mark: Une notification sera envoyée dans <#{TARGET}> lorsqu'un·e membre quittera le serveur",
+			"leave_chan_disabled": ":white_check_mark: Les notifications de départ sont maintenant désactivées",
 			"leave_chan_ko": ":x: <#{TARGET}> n'est pas un channel valide",
 			"leave_chan_notification": "🚨 `{user}` a quitté le serveur"
 		},
@@ -218,6 +229,13 @@
 					"param": "Langage à utiliser"
 				},
 				"birthday": "Définit ce channel comme la cible des annonces d'anniversaires",
+				"birthday_remove": {
+					"description":"Supprime les alertes d'anniversaire d'un·e membre",
+					"user":"Membre dont supprimer les alertes",
+					"user_id":"ID du/de la membre dont supprimer les alertes",
+					"success":"Les alertes ont bien été désactivées pour cette personne",
+					"user_not_found":"Le membre spécifié n'a pas été trouvé"
+				},
 				"inactivity": {
 					"description": "Définir un délais d'inactivité après lequel les rôles d'un membre seront changés",
 					"days": "Nombre de jours inactif après lequel les rôles d'un membre seront changés",
@@ -229,7 +247,8 @@
 				},
 				"leave": {
 					"description": "Envoyer une notification lorsque quelqu'un quitte le serveur",
-					"param": "Channel où envoyer les notification"
+					"param": "Channel où envoyer les notification",
+					"disable": "Désactiver les notifications"
 				}
 			},
 			"twitch": {
@@ -246,7 +265,8 @@
 				"title": "Titre du sondage",
 				"anon": "Votes anonymes ?",
 				"unique": "Autoriser 1 vote max/personne ? (ne fonctionne qu'en mode anonyme)",
-				"option": "Option N°{X}"
+				"option": "Option N°{X}",
+				"emote": "Emote de l'option N°{X}"
 			},
 			"support": {
 				"description": "Système de support",

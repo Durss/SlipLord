@@ -23,7 +23,8 @@
 		"uploads"
 	],
 	"watch": [
-		"server"
+		"server",
+		"labels.json"
 	],
 	"exec_mode": "fork"
 }
