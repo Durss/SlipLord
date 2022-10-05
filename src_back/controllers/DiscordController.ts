@@ -1104,8 +1104,9 @@ export default class DiscordController extends EventDispatcher {
 		title += "\n"+Label.get(lang, "poll.created_by", [{id:"user", value:cmd.user.id}]);
 
 		let msg = options.map(option => {
-			const count = anonMode? " `(x"+option.v.length+"`)" : "";
-			return option.e + count + " ➔ "+ option.n;
+			const plural = option.v.length > 1? "s" : "";
+			const count = anonMode? " **"+option.v.length+" vote"+plural+" :** " : "";
+			return option.e + " ➔ "+ count + option.n;
 		}).join("\n");
 
 		if(cmd.channel) {
@@ -1142,7 +1143,10 @@ export default class DiscordController extends EventDispatcher {
 	 * @param reaction 
 	 */
 	private async updateAnonPoll(poll:AnonPoll, reaction:Discord.MessageReaction):Promise<void> {
-		let msg = poll.opt.map(option => option.e + " `(x"+option.v.length+")` ➔ "+ option.n ).join("\n");
+		let msg = poll.opt.map(option => {
+			const plural = option.v.length > 1? "s" : "";
+			return option.e + " ➔ **"+option.v.length+" vote"+plural+" :** "+ option.n;
+		} ).join("\n");
 		await reaction.message.edit(poll.title + "\n" + msg);
 	}
 
