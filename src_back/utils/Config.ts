@@ -46,8 +46,8 @@ export default class Config {
 
 	public static get SERVER_PORT(): number {
 		return this.getEnvData({
-			dev: 3020,//3023
-			prod: 3020,//3023
+			dev: 3023,//3023
+			prod: 3023,//3023
 		});
 	}
 

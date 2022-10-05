@@ -133,6 +133,9 @@
 			"viewers_max":"Viewers max"
 		},
 		"poll":{
+			"vote":"{VOTES} vote",
+			"votes":"{VOTES} votes",
+			"anonymous":"_(🕵️ anonymous votes)_",
 			"created_by":"_(created by <@{user}>)_"
 		},
 		"twitch": {
@@ -296,6 +299,9 @@
 			"viewers_max":"Viewers max"
 		},
 		"poll":{
+			"vote":"{VOTES} vote",
+			"votes":"{VOTES} votes",
+			"anonymous":"_(🕵️ votes anonymes)_",
 			"created_by":"_(créé par <@{user}>)_"
 		},
 		"twitch": {

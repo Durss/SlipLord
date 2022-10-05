@@ -598,7 +598,8 @@ export default class DiscordController extends EventDispatcher {
 							}
 						});
 						if(update) {
-							this.updateAnonPoll(p, reaction);
+							const lang = this.lang(reaction.message.guildId as string);
+							this.updateAnonPoll(p, reaction, lang);
 						}
 						reaction.users.remove(user.value[0]);
 					}
@@ -1104,13 +1105,15 @@ export default class DiscordController extends EventDispatcher {
 		title += "\n"+Label.get(lang, "poll.created_by", [{id:"user", value:cmd.user.id}]);
 
 		let msg = options.map(option => {
-			const plural = option.v.length > 1? "s" : "";
-			const count = anonMode? " **"+option.v.length+" vote"+plural+" :** " : "";
+			const votes = Label.get(lang, "poll.vote"+(option.v.length >1? "s":""), [{id:"votes", value:option.v.length.toString()}]);
+			const count = anonMode? " **"+votes+" :** " : "";
 			return option.e + " ➔ "+ count + option.n;
 		}).join("\n");
+		
+		const anon = anonMode? "\n"+Label.get(lang, "poll.anonymous") : "";
 
 		if(cmd.channel) {
-			let discordMessage = await cmd.channel.send(title + "\n" + msg);
+			let discordMessage = await cmd.channel.send(title + anon + "\n" + msg);
 			options.forEach(async v => {
 				try {
 					await discordMessage.react(v.e);
@@ -1142,12 +1145,13 @@ export default class DiscordController extends EventDispatcher {
 	 * @param poll 
 	 * @param reaction 
 	 */
-	private async updateAnonPoll(poll:AnonPoll, reaction:Discord.MessageReaction):Promise<void> {
+	private async updateAnonPoll(poll:AnonPoll, reaction:Discord.MessageReaction, lang:string):Promise<void> {
 		let msg = poll.opt.map(option => {
-			const plural = option.v.length > 1? "s" : "";
-			return option.e + " ➔ **"+option.v.length+" vote"+plural+" :** "+ option.n;
+			const votes = Label.get(lang, "poll.vote"+(option.v.length >1? "s":""), [{id:"votes", value:option.v.length.toString()}]);
+			return option.e + " ➔ **"+votes+" :** "+ option.n;
 		} ).join("\n");
-		await reaction.message.edit(poll.title + "\n" + msg);
+		const anon = "\n"+Label.get(lang, "poll.anonymous");
+		await reaction.message.edit(poll.title + anon + "\n" + msg);
 	}
 
 	/**
