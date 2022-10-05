@@ -581,15 +581,19 @@ export default class DiscordController extends EventDispatcher {
 						let update = false;
 						if(user.done) break;
 						if(user.value[0] === reaction.message.author?.id) continue;
-						p.opt.forEach(o=> {
-							if(o.e === reaction.emoji.name) {
-								if(o.v.indexOf(user.value[0]) == -1) {
-									o.v.push(user.value[0]);
+						p.opt.forEach(option=> {
+							if(option.e === reaction.emoji.name) {
+								if(option.v.indexOf(user.value[0]) == -1) {
+									option.v.push(user.value[0]);
+									update = true;
+								}else{
+									const index = option.v.indexOf(user.value[0]);
+									option.v.splice(index, 1);
 									update = true;
 								}
-							}else if(p.unique === true && o.v.indexOf(user.value[0]) > -1) {
-								const index = o.v.indexOf(user.value[0]);
-								o.v.splice(index, 1);
+							}else if(p.unique === true && option.v.indexOf(user.value[0]) > -1) {
+								const index = option.v.indexOf(user.value[0]);
+								option.v.splice(index, 1);
 								update = true;
 							}
 						});
