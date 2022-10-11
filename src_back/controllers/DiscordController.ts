@@ -1103,7 +1103,7 @@ export default class DiscordController extends EventDispatcher {
 		}
 		
 		title += "\n"+Label.get(lang, "poll.created_by", [{id:"user", value:cmd.user.id}]);
-		if(anonMode) "\n"+Label.get(lang, "poll.anonymous");
+		if(anonMode) title += "\n"+Label.get(lang, "poll.anonymous");
 
 		let msg = options.map(option => {
 			const votes = Label.get(lang, "poll.vote"+(option.v.length >1? "s":""), [{id:"votes", value:option.v.length.toString()}]);
@@ -1112,7 +1112,7 @@ export default class DiscordController extends EventDispatcher {
 		}).join("\n");
 
 		if(cmd.channel) {
-			let discordMessage = await cmd.channel.send(title + anon + "\n" + msg);
+			let discordMessage = await cmd.channel.send(title + "\n" + msg);
 			options.forEach(async v => {
 				try {
 					await discordMessage.react(v.e);
