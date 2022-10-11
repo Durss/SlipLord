@@ -59,7 +59,7 @@ export default class DiscordController extends EventDispatcher {
 		//Called when using a /command
 		this.client.on("interactionCreate", (interaction) => this.onCommand(interaction))
 		//Called when a reaction is added to a message
-		this.client.on("messageReactionAdd", (reaction, user) => this.onAddReaction(reaction as Discord.MessageReaction, user));
+		this.client.on("messageReactionAdd", (reaction, user) => this.onAddReaction(reaction as Discord.MessageReaction, user as Discord.User));
 		//Called when a reaction is removed from a message
 		this.client.on("messageReactionRemove", (reaction) => this.onRemoveReaction(reaction as Discord.MessageReaction));
 		//Called when a new member joins the server
@@ -589,7 +589,7 @@ export default class DiscordController extends EventDispatcher {
 	/**
 	 * Called when someone uses a reaction on a message
 	 */
-	private async onAddReaction(reaction:Discord.MessageReaction, userOrigin:Discord.PartialUser):Promise<void> {
+	private async onAddReaction(reaction:Discord.MessageReaction, userOrigin:Discord.User):Promise<void> {
 		const anonPolls = StorageController.getData(reaction.message.guildId as string, StorageController.ANON_POLLS) as AnonPoll[];
 		const uniquePoll = StorageController.getData(reaction.message.guildId as string, StorageController.UNIQUE_POLLS) as UniquePoll[];
 		let anonVote:AnonPoll|undefined = anonPolls?.find(v=> v.id === reaction.message.id);
