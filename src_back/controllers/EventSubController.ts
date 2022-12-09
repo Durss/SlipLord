@@ -66,7 +66,9 @@ export default class EventSubController extends EventDispatcher {
 				return;
 			}
 		}catch(error) {
-			setTimeout(() => this.subToUser(uid), 10000);
+			//Try again in 5s
+			setTimeout(() => this.subToUser(uid), 5000);
+			return;
 		}
 
 		this.subToList.push(uid);
