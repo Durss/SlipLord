@@ -39,7 +39,7 @@ export default class EventSubController extends EventDispatcher {
 			callbackUrl = Config.PUBLIC_SECURED_URL+"api/eventsubcallback";
 		}
 		if(callbackUrl) {
-			this.url = callbackUrl.replace(/\/+$/gi, "")+"/";
+			this.url = callbackUrl.replace(/\/+$/gi, "");
 
 			this.sanitizeSubscriptions();
 		}
@@ -125,7 +125,7 @@ export default class EventSubController extends EventDispatcher {
 		const usersSubed:{[key:string]:boolean} = {};
 		const users:TwitchUser[] = StorageController.getAllValues(StorageController.TWITCH_USERS);
 
-		Logger.info("📢 EventSub sanitizing eventsub subscriptions... ("+(users?.length ?? 0)+" users expected, "+(subscriptions?.length ?? 0)+" subscriptions found)");
+		Logger.info("📢 EventSub sanitizing eventsub subscriptions ("+(users?.length ?? 0)+" users expected, "+(subscriptions?.length ?? 0)+" subscriptions found)...");
 
 		for (let i = 0; i < subscriptions.length; i++) {
 			const s = subscriptions[i];
@@ -137,14 +137,18 @@ export default class EventSubController extends EventDispatcher {
 				if(existing[key] === true) {
 					Logger.warn("📢 EventSub Deleting duplicate subscription (type:"+s.type+") for user:", s.condition.broadcaster_user_id);
 					await TwitchUtils.eventsubSubscriptionDelete(s.id);
-				}else{
-					Logger.info("📢 EventSub Keep existing subscription (type:"+s.type+") for user:", s.condition.broadcaster_user_id);
-				}
+				}else
 				if(users.findIndex(v=>v.uid == s.condition.broadcaster_user_id) == -1) {
 					Logger.warn("📢 EventSub Deleting invalid remaining subscription (type:"+s.type+") for user: ", s.condition.broadcaster_user_id);
 					await TwitchUtils.eventsubSubscriptionDelete(s.id);
+				}else
+				if(s.transport.callback != this.url) {
+					Logger.warn("📢 EventSub Deleting subscription with invalid clalback URL (URL:"+s.transport.callback+") for user: ", s.condition.broadcaster_user_id);
+					await TwitchUtils.eventsubSubscriptionDelete(s.id);
+				}else{
+					Logger.info("📢 EventSub Keep existing subscription (type:"+s.type+") for user:", s.condition.broadcaster_user_id, s.transport.callback);
+					usersSubed[s.condition.broadcaster_user_id] = true;
 				}
-				usersSubed[s.condition.broadcaster_user_id] = true;
 				existing[key] = true;
 			}
 		}
@@ -154,7 +158,7 @@ export default class EventSubController extends EventDispatcher {
 			//If user has no live subscription, create it
 			if(usersSubed[u.uid] !== true) {
 				Logger.warn("📢 EventSub Create missing subscription for user: ", u.uid);
-				this.subToUser(u.uid);
+				await this.subToUser(u.uid);
 			}
 		}
 
