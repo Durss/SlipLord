@@ -55,6 +55,12 @@ export default class TwitchUtils {
 		}
 	}
 
+	/**
+	 * Gets info about a channel from their login or ID
+	 * @param logins 
+	 * @param ids 
+	 * @returns 
+	 */
 	public static async loadChannelsInfo(logins:string[]|null, ids:string[]|null = null):Promise<TwitchTypes.UserInfo[]> {
 		await this.getClientCredentialToken();//This will refresh the token if necessary
 	
@@ -82,6 +88,13 @@ export default class TwitchUtils {
 		return users;
 	}
 
+	/**
+	 * Get info about a user's stream from their login or ID
+	 * @param logins 
+	 * @param ids 
+	 * @param failSafe 
+	 * @returns 
+	 */
 	public static async getStreamsInfos(logins:string[]|null, ids?:string[], failSafe:boolean = true):Promise<TwitchTypes.StreamInfo[]> {
 		await this.getClientCredentialToken();//This will refresh the token if necessary
 
@@ -120,7 +133,101 @@ export default class TwitchUtils {
 			return json.data
 		}
 	}
+
+	/**
+	 * Get eventsub current subscription list
+	 * @returns 
+	 */
+	public static async getEventsubSubscriptions():Promise<TwitchTypes.EventsubSubscription[]> {
+		await this.getClientCredentialToken();//This will refresh the token if necessary
+		let list:TwitchTypes.EventsubSubscription[] = [];
+		let cursor:string|null = null;
+		const headers = {
+			"Client-ID": Config.TWITCH_APP_CLIENT_ID,
+			"Authorization": "Bearer "+this._token,
+			"Content-Type": "application/json",
+		};
+		do {
+			const url = new URL("https://api.twitch.tv/helix/eventsub/subscriptions");
+			url.searchParams.append("type", "stream.online");
+			if(cursor) url.searchParams.append("after", cursor);
+			const res = await fetch(url.href, {headers});
+			if(res.status != 200) return [];//As i managed to corrupt my twitch data, i need this to avoid errors everytime
+			const json:{data:TwitchTypes.EventsubSubscription[], pagination?:{cursor?:string}} = await res.json();
+			list = list.concat(json.data);
+			cursor = null;
+			if(json.pagination?.cursor) {
+				cursor = json.pagination.cursor;
+			}
+		}while(cursor != null)
+		return list;
+	}
+
+	/**
+	 * Create a new eventsub subscription
+	 * @param uid 
+	 * @param callbackURI 
+	 * @returns 
+	 */
+	public static async eventsubSubscriptionCreate(uid:string, callbackURI:string):Promise<boolean> {
+		await this.getClientCredentialToken();//This will refresh the token if necessary
+
+		let opts = {
+			method:"POST",
+			headers:{
+				"Client-ID": Config.TWITCH_APP_CLIENT_ID,
+				"Authorization": "Bearer "+this._token,
+				"Content-Type": "application/json",
+			},
+			body:JSON.stringify({
+				"type": "stream.online",
+				"version": "1",
+				"condition": {
+					"broadcaster_user_id": uid
+				},
+				"transport": {
+					"method": "webhook",
+					"callback": callbackURI,
+					"secret": Config.TWITCH_EVENTSUB_SECRET,
+				}
+			})
+		};
+		
+		try {
+			let res = await fetch("https://api.twitch.tv/helix/eventsub/subscriptions", opts);
+			if(res.status == 403) {
+				return false;
+			}
+			// console.log(await res.json());
+		}catch(error) {
+			console.log(error);
+			throw(error);
+		}
+		return true
+	}
+
+	/**
+	 * Get info about a user's stream from their login or ID
+	 * @param id subscription ID 
+	 * @returns 
+	 */
+	public static async eventsubSubscriptionDelete(id:string):Promise<boolean> {
+		await this.getClientCredentialToken();//This will refresh the token if necessary
+		const headers = {
+			"Client-ID": Config.TWITCH_APP_CLIENT_ID,
+			"Authorization": "Bearer "+this._token,
+			"Content-Type": "application/json",
+		};
+		const url = new URL("https://api.twitch.tv/helix/eventsub/subscriptions");
+		url.searchParams.append("id", id);
+		const res = await fetch(url.href, {method:"DELETE", headers});
+		if(res.status == 204) return true;
+		return false;
+	}
 	
+	/**
+	 * Makes sure a token is still valid
+	 */
 	public static validateToken(token:string):Promise<boolean|any> {
 		return new Promise((resolve, reject) => {
 			let headers:any = {
@@ -437,4 +544,20 @@ export namespace TwitchTypes {
 		to_name: string;
 		followed_at: string;
 	}
+
+	export interface EventsubSubscription {
+        id: string;
+        status: "webhook_callback_verification_failed" | "enabled" | "notification_failures_exceeded" | "webhook_callback_verification_pending" | "authorization_revoked" | "user_removed" | "version_removed";
+        type: string;
+        version: string;
+        condition: {
+			broadcaster_user_id: string;
+		};
+        created_at: string;
+        transport: {
+			method: string;
+			callback: string;
+		};
+        cost: number;
+    }
 }

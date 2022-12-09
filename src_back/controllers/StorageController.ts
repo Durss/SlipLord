@@ -18,6 +18,7 @@ export class StorageController {
 	public static LEAVE_CHANNEL:string = "LEAVE_CHANNEL";
 	public static BIRTHDAYS:string = "BIRTHDAYS";
 	public static TWITCH_USERS:string = "TWITCH_USERS";
+	public static TWITCH_LIVE_CARD:string = "TWITCH_LIVE_CARD";
 	public static INACTIVITY_CONFIGS:string = "INACTIVITY_CONFIGS";
 	public static SUPPORT_TARGET:string = "SUPPORT_TARGET";
 	
@@ -91,6 +92,32 @@ export class StorageController {
 		if(fs.existsSync(path)) {
 			fs.rm(path, {recursive:true, force:true}, ()=>{});
 		}
+	}
+
+	/**
+	 * Get all the values for the specified key accross all
+	 * storage instances
+	 * 
+	 * @param key 
+	 */
+	public static getAllValues(key:string):any[] {
+		const files = fs.readdirSync(this.cachepath);
+		let result:any[] = [];
+		for (let i = 0; i < files.length; i++) {
+			const f = files[i];
+			if(f == "." || f == "..") continue;
+			if(fs.lstatSync(this.cachepath + f).isDirectory())  {
+				const data = this.getData(f, key);
+				if(data == undefined) continue;
+
+				if(Array.isArray(data)) {
+					result = result.concat(data);
+				}else{
+					result.push(data);
+				}
+			}
+		}
+		return result;
 	}
 	
 	

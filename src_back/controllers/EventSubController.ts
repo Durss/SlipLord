@@ -3,8 +3,8 @@ import { Express, Request, Response } from "express-serve-static-core";
 import Config from "../utils/Config";
 import Logger, { LogStyle } from '../utils/Logger';
 import TwitchUtils from "../utils/TwitchUtils";
-import fetch from "node-fetch";
 import { Event, EventDispatcher } from "../utils/EventDispatcher";
+import { StorageController, TwitchUser } from "./StorageController";
 
 /**
 * Created : 25/10/2021 
@@ -13,7 +13,6 @@ export default class EventSubController extends EventDispatcher {
 
 	private app:Express;
 	private url!:string;
-	private token:string|null=null;
 	private idsParsed:{[key:string]:boolean} = {};
 	private challengeCompleteCount:number = 0;
 	private challengeCompleteLogTimeout:any;
@@ -37,14 +36,12 @@ export default class EventSubController extends EventDispatcher {
 		this.app.post("/api/eventsubcallback", (req:Request,res:Response) => this.eventSub(req,res));
 		
 		if(!callbackUrl) {
-			callbackUrl = Config.PUBLIC_SECURED_URL;
+			callbackUrl = Config.PUBLIC_SECURED_URL+"api/eventsubcallback";
 		}
 		if(callbackUrl) {
 			this.url = callbackUrl.replace(/\/+$/gi, "")+"/";
 
-			this.token = await TwitchUtils.getClientCredentialToken();
-
-			this.onReady();
+			this.sanitizeSubscriptions();
 		}
 	}
 
@@ -62,61 +59,58 @@ export default class EventSubController extends EventDispatcher {
 			Logger.warn("📢 EventSub is missing a secret passphrase to be initialized !");
 			return;
 		}
-		let condition:any = {
-			"broadcaster_user_id": uid
-		};
 
-		this.token = await TwitchUtils.getClientCredentialToken();
-
-		let opts = {
-			method:"POST",
-			headers:{
-				"Client-ID": Config.TWITCH_APP_CLIENT_ID,
-				"Authorization": "Bearer "+this.token,
-				"Content-Type": "application/json",
-			},
-			body:JSON.stringify({
-				"type": "stream.online",
-				"version": "1",
-				"condition": condition,
-				"transport": {
-					"method": "webhook",
-					"callback": this.url+"api/eventsubcallback",
-					"secret": Config.TWITCH_EVENTSUB_SECRET,
-				}
-			})
-		}
-		
 		try {
-			let res = await fetch("https://api.twitch.tv/helix/eventsub/subscriptions", opts);
-			if(res.status == 403) {
+			if(!await TwitchUtils.eventsubSubscriptionCreate(uid, this.url)) {
 				this.logOAuthURL();
 				return;
 			}
-			// console.log(await res.json());
 		}catch(error) {
-			Logger.error("📢 EventSub subscription error for user:", uid);
-			console.log(error);
-			//Try again
 			setTimeout(() => this.subToUser(uid), 10000);
-			return;
 		}
 
 		this.subToList.push(uid);
+		//Debounce that log in case we're subscribing to multiple users at once
 		clearTimeout(this.challengeCompleteLogTimeout);
 		this.challengeCompleteLogTimeout = setTimeout(_=> {
-			Logger.success("📢 EventSub subscribed to "+this.subToList.length+" users :",this.subToList);
+			Logger.info("📢 EventSub subscribing to "+this.subToList.length+" users and wait for eventsub challenge :",this.subToList);
 			this.subToList = [];
-		}, 500);
+		}, 1000);
 	}
 
 	/**
 	 * Stops receiving live notifications for a specific user
 	 * 
-	 * @param uid 
+	 * @param uid	specify a user ID to remove a specific event sub
+	 * @returns 
 	 */
-	public unsubUser(uid:string):void {
-		this.unsubPrevious(uid);
+	public async unsubUser(uid?:string):Promise<void> {
+		let list = await TwitchUtils.getEventsubSubscriptions();
+
+		// console.log(json.total_cost);
+		// console.log(json.max_total_cost);
+		// console.log(json.pagination);
+		// console.log(json.data.length+" / "+json.total);
+		// console.log("LOADED COUNT ", list.length);
+		
+
+		//Filtering out only callbacks for current environment
+		let callbacksToClean = list.filter(e => {
+			let include = e.transport.callback.indexOf(this.url) > -1;
+			if(uid) {
+				include =  include && e.condition.broadcaster_user_id == uid;
+			}
+			return include;
+		});
+		Logger.info("📢 EventSub Cleaning up "+callbacksToClean.length+" subscriptions...");
+		for (let i = 0; i < callbacksToClean.length; i++) {
+			const subscription = list[i];
+			if(!await TwitchUtils.eventsubSubscriptionDelete(subscription.id)) {
+				Logger.error("📢 EventSub Cleanup error for:", subscription.type)
+			}
+		}
+
+		Logger.success("📢 EventSub Cleaning up complete for "+callbacksToClean.length+" subscriptions");
 	}
 
 
@@ -125,7 +119,45 @@ export default class EventSubController extends EventDispatcher {
 	/*******************
 	* PRIVATE METHODS *
 	*******************/
-	private async onReady():Promise<void> {
+	private async sanitizeSubscriptions():Promise<void> {
+		const subscriptions = await TwitchUtils.getEventsubSubscriptions();
+		const existing:{[key:string]:boolean} = {};
+		const usersSubed:{[key:string]:boolean} = {};
+		const users:TwitchUser[] = StorageController.getAllValues(StorageController.TWITCH_USERS);
+
+		Logger.info("📢 EventSub sanitizing eventsub subscriptions... ("+(users?.length ?? 0)+" users expected, "+(subscriptions?.length ?? 0)+" subscriptions found)");
+
+		for (let i = 0; i < subscriptions.length; i++) {
+			const s = subscriptions[i];
+			if(s.status != "enabled") {
+				Logger.warn("📢 EventSub Deleting inactive subscription (status:"+s.status+") for user:", s.condition.broadcaster_user_id);
+				await TwitchUtils.eventsubSubscriptionDelete(s.id);
+			}else{
+				const key = s.condition.broadcaster_user_id+"_"+s.transport.method+"_"+s.type;
+				if(existing[key] === true) {
+					Logger.warn("📢 EventSub Deleting duplicate subscription (type:"+s.type+") for user:", s.condition.broadcaster_user_id);
+					await TwitchUtils.eventsubSubscriptionDelete(s.id);
+				}else{
+					Logger.info("📢 EventSub Keep existing subscription (type:"+s.type+") for user:", s.condition.broadcaster_user_id);
+				}
+				if(users.findIndex(v=>v.uid == s.condition.broadcaster_user_id) == -1) {
+					Logger.warn("📢 EventSub Deleting invalid remaining subscription (type:"+s.type+") for user: ", s.condition.broadcaster_user_id);
+					await TwitchUtils.eventsubSubscriptionDelete(s.id);
+				}
+				usersSubed[s.condition.broadcaster_user_id] = true;
+				existing[key] = true;
+			}
+		}
+		
+		for (let i = 0; i < users.length; i++) {
+			const u = users[i];
+			//If user has no live subscription, create it
+			if(usersSubed[u.uid] !== true) {
+				Logger.warn("📢 EventSub Create missing subscription for user: ", u.uid);
+				this.subToUser(u.uid);
+			}
+		}
+
 		Logger.success("📢 EventSub ready");
 	}
 
@@ -177,74 +209,6 @@ export default class EventSubController extends EventDispatcher {
 		}
 		this.idsParsed[id] = true;
 		res.sendStatus(200);
-	}
-	/**
-	 * Removes previous event sub
-	 * 
-	 * @param uid	specify a user ID to remove a specific event sub
-	 * @returns 
-	 */
-	private async unsubPrevious(uid?:string):Promise<void> {
-		this.token = await TwitchUtils.getClientCredentialToken();
-		let opts = {
-			method:"GET",
-			headers:{
-				"Client-ID": Config.TWITCH_APP_CLIENT_ID,
-				"Authorization": "Bearer "+this.token,
-				"Content-Type": "application/json",
-			}
-		};
-		let list:EventSubMessageSubType.Subscription[] = [];
-		let json:any, cursor:string = "";
-		do {
-			let url = "https://api.twitch.tv/helix/eventsub/subscriptions";
-			if(cursor) {
-				url += "?after="+cursor;
-			}
-			// console.log(url);
-			let res = await fetch(url, opts);
-			json = await res.json();
-			if(res.status == 401) {
-				this.logOAuthURL();
-				return;
-			}
-			list = list.concat(json.data);
-			cursor = json.pagination?.cursor;
-		}while(cursor != null);
-
-		// console.log(json.total_cost);
-		// console.log(json.max_total_cost);
-		// console.log(json.pagination);
-		// console.log(json.data.length+" / "+json.total);
-		// console.log("LOADED COUNT ", list.length);
-		
-
-		//Filtering out only callbacks for current environment
-		let callbacksToClean = list.filter(e => {
-			let include = e.transport.callback.indexOf(this.url) > -1;
-			if(uid) {
-				include =  include
-						&& e.condition.broadcaster_user_id == uid;
-						// && e.transport.callback.split("profile=")[1] == profile;
-			}
-			return include;
-		});
-		Logger.info("📢 EventSub Cleaning up "+callbacksToClean.length+" subscriptions...");
-		for (let i = 0; i < callbacksToClean.length; i++) {
-			const subscription = list[i];
-			let opts = {
-				method:"DELETE",
-				headers:{
-					"Client-ID": Config.TWITCH_APP_CLIENT_ID,
-					"Authorization": "Bearer "+this.token,
-					"Content-Type": "application/json",
-				}
-			}
-			await fetch("https://api.twitch.tv/helix/eventsub/subscriptions?id="+subscription.id, opts).catch(error=>{
-				Logger.error("📢 EventSub Cleanup error for:", subscription.type)
-			})
-		}
-		Logger.success("📢 EventSub Cleaning up complete for "+callbacksToClean.length+" subscriptions");
 	}
 
 	/**

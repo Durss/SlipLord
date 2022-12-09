@@ -167,7 +167,7 @@ export default class DiscordController extends EventDispatcher {
 				const channel = this.client.channels.cache.get(user.channel) as Discord.TextChannel;
 				const historyKey = user.uid +"_"+user.channel+"_"+guild.id;
 				
-				let usersStorage:{[key:string]:TwitchLiveMessage} = StorageController.getData("global", StorageController.TWITCH_USERS);
+				let usersStorage:{[key:string]:TwitchLiveMessage} = StorageController.getData("global", StorageController.TWITCH_LIVE_CARD);
 				if(!usersStorage) usersStorage = {};
 				const messageHistory = usersStorage[historyKey];
 				//Search for the last message sent by the bot for this user on this channel
@@ -209,7 +209,7 @@ export default class DiscordController extends EventDispatcher {
 							//Update the date on all the entries of the user on the global storage
 							const liveItem = usersStorage[historyKey];
 							liveItem.date = Date.now();
-							StorageController.setData("global", StorageController.TWITCH_USERS, usersStorage);
+							StorageController.setData("global", StorageController.TWITCH_LIVE_CARD, usersStorage);
 						}else{
 							//Send new message
 							message = await channel.send({embeds:[card]});
@@ -219,7 +219,7 @@ export default class DiscordController extends EventDispatcher {
 								date:Date.now(),
 								messageId:message.id,
 							};
-							StorageController.setData("global", StorageController.TWITCH_USERS, usersStorage);
+							StorageController.setData("global", StorageController.TWITCH_LIVE_CARD, usersStorage);
 						}
 
 						//Schedule message update 1min later
@@ -1112,7 +1112,7 @@ export default class DiscordController extends EventDispatcher {
 		}).join("\n");
 
 		if(cmd.channel) {
-			let discordMessage = await cmd.channel.send(title + anon + "\n" + msg);
+			let discordMessage = await cmd.channel.send(title + "\n" + msg);
 			options.forEach(async v => {
 				try {
 					await discordMessage.react(v.e);

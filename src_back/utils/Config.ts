@@ -1,7 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
 import { LogStyle } from "../utils/Logger";
-import { AvailableLocales } from "./Label";
 /**
  * Created by Durss
  */
@@ -13,6 +12,7 @@ export default class Config {
 	
 	public static TWITCH_API_PATH:string = "https://api.twitch.tv/helix/";
 	
+	public static get SERVER_PORT():number { return this.getData("SERVER_PORT") as number; 	}
 	public static get BOT_NAME():string { return this.getData("BOT_NAME") as string; 	}
 	public static get TIMEZONE_OFFSET():number { return this.getData("TIMEZONE_OFFSET") as number; 	}
 	public static get CMD_PREFIX():string { return this.getData("CMD_PREFIX") as string; 	}
@@ -40,14 +40,7 @@ export default class Config {
 	public static get LOGS_ENABLED(): boolean {
 		return this.getEnvData({
 			dev: true,
-			prod: false,
-		});
-	}
-
-	public static get SERVER_PORT(): number {
-		return this.getEnvData({
-			dev: 3023,//3023
-			prod: 3023,//3023
+			prod: true,
 		});
 	}
 
