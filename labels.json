@@ -142,7 +142,8 @@
 			"not_configured": ":x: This feature is missing some values in the `config.js` file to work. Fill them in and try again",
 			"user_added": ":white_check_mark: A notification will be sent on this channel when the Twitch user **{user}** goes live",
 			"user_removed": ":white_check_mark: The live notifications for the **{user}** are now disabled",
-			"user_notFound": ":x: The Twitch user **{user}** does not exists"
+			"user_notFound": ":x: The Twitch user **{user}** does not exists",
+			"user_list": "Twitch users you'll be notified about when they go live:"
 		},
 		"birthday": {
 			"invalid_date": "The specified date is invalid. Format must be the following : `{FORMAT}`",
@@ -308,7 +309,8 @@
 			"not_configured": ":x: Cette fonctionnalité nécessite des configurations dans le fichier `config.js`. Remplissez-les puis essayez à nouveau",
 			"user_added": ":white_check_mark: Une notification sera envoyée dans ce channel lorsque **{user}** sera en live sur Twitch",
 			"user_removed": ":white_check_mark: Les notifications de live de **{user}** sont maintenant désactivées",
-			"user_notFound": ":x: L'utilisateur·ice **{user}** Twitch n'existe pas"
+			"user_notFound": ":x: L'utilisateur·ice **{user}** Twitch n'existe pas",
+			"user_list": "Liste des utilisateurices Twitch pour lesquel·les vous serez notifié des lives:"
 		},
 		"birthday": {
 			"invalid_date": "La date spécifiée est invalide. Elle doit être au format suivant : `{FORMAT}`",

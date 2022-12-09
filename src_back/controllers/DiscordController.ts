@@ -872,12 +872,26 @@ export default class DiscordController extends EventDispatcher {
 	 */
 	private async twitchLiveAlertChannel(cmd:Discord.CommandInteraction):Promise<void> {
 		let watch:boolean = false;
-		let key = "unwatch_login";
+		let key = "";
 		if(cmd.options.get("watch_login")) {
 			watch = true;
 			key = "watch_login";
 		}
+		if(cmd.options.get("unwatch_login")) {
+			watch = false;
+			key = "unwatch_login";
+		}
+		
 		const lang = this.lang(cmd.guildId as string);
+
+		if(key === "") {
+			const users:TwitchUser[] = StorageController.getData(cmd.guildId as string, StorageController.TWITCH_USERS);
+			const userNames = users.map(v=>"\n ⚈ **" + v.login + "** => <#" + v.channel + ">");
+			const message = Label.get(lang, "twitch.user_list") + userNames;
+			cmd.reply({content:message, ephemeral:true});
+			return;
+		}
+
 		if(!Config.IS_TWITCH_CONFIGURED) {
 			cmd.reply({content:Label.get(lang, "twitch.not_configured"), ephemeral:true});
 			return;
