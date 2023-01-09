@@ -120,10 +120,8 @@
 		"roles": {
 			"intro":"Open the selector bellow and select all the roles you want",
 			"list_placeholder":"Select...",
-			"add_ok":":white_check_mark: <@{user}>, you now have the selected roles !",
-			"del_all_intro":"To reset all your roles, click the button bellow",
-			"del_all":"🗑️ Remove all roles",
-			"del_all_ok":":white_check_mark: <@{user}>, all your roles have been reset."
+			"add_ok":":white_check_mark: the role **{role}** has been added to your profile!",
+			"del_ok":":white_check_mark: the role **{role}** has been removed to your profile!"
 		},
 		"twitch_live":{
 			"online":"🔴 {user} is live!",
@@ -148,7 +146,7 @@
 		"birthday": {
 			"invalid_date": "The specified date is invalid. Format must be the following : `{FORMAT}`",
 			"success": ":white_check_mark: Your birthday has been set to **{date}**",
-			"alert": "**🎉 🎊 Today is <@{user}>'s birthday 🎊 🎉**\nHappy birthday !"
+			"alert": "**🎉 🎊 Today is <@{user}>'s birthday 🎊 🎉**\nHappy birthday!"
 		},
 		"support": {
 			"channel_name": "{USER}",
@@ -287,13 +285,11 @@
 		"roles": {
 			"intro":"Sélectionne les rôles que tu souhaites t'attribuer dans la liste ci-dessous",
 			"list_placeholder":"Sélection...",
-			"add_ok":":white_check_mark: <@{user}>, les roles t'ont bien été attribués !",
-			"del_all_intro":"Pour réinitialiser tes rôles, click le bouton ci-dessous",
-			"del_all":"Me supprimer tous les rôles",
-			"del_all_ok":":white_check_mark: <@{user}>, tous tes rôles t'ont bien été retirés."
+			"add_ok":":white_check_mark: le role **{role}** t'a bien été attribué!",
+			"del_ok":":white_check_mark: le rôle **{role}** t'a bien été retiré!"
 		},
 		"twitch_live":{
-			"online":"🔴 {user} est en live !",
+			"online":"🔴 {user} est en live!",
 			"offline":"{user} était en live.",
 			"category":"Catégorie",
 			"stream_duration":"Durée du stream",
@@ -315,7 +311,7 @@
 		"birthday": {
 			"invalid_date": "La date spécifiée est invalide. Elle doit être au format suivant : `{FORMAT}`",
 			"success": ":white_check_mark: Ton anniversaire a bien été enregistré pour le **{date}**",
-			"alert": "**🎉 🎊 Aujourd'hui c'est l'anniversaire de <@{user}> 🎊 🎉**\nJoyeux anniversaire !"
+			"alert": "**🎉 🎊 Aujourd'hui c'est l'anniversaire de <@{user}> 🎊 🎉**\nJoyeux anniversaire!"
 		},
 		"support": {
 			"channel_name": "{USER}",
