@@ -118,7 +118,7 @@
 			}
 		},
 		"roles": {
-			"intro":"Open the selector bellow and select all the roles you want",
+			"intro":"Click on buttons bellow to add or remove the corresponding role on your profile",
 			"list_placeholder":"Select...",
 			"add_ok":":white_check_mark: the role **{role}** has been added to your profile!",
 			"del_ok":":white_check_mark: the role **{role}** has been removed to your profile!"
@@ -283,7 +283,7 @@
 			}
 		},
 		"roles": {
-			"intro":"Sélectionne les rôles que tu souhaites t'attribuer dans la liste ci-dessous",
+			"intro":"Sélectionne les rôles que tu souhaites t'attribuer ou te retirer via les boutons ci-dessous",
 			"list_placeholder":"Sélection...",
 			"add_ok":":white_check_mark: le role **{role}** t'a bien été attribué!",
 			"del_ok":":white_check_mark: le rôle **{role}** t'a bien été retiré!"
