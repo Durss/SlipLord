@@ -1032,7 +1032,14 @@ export default class DiscordController extends EventDispatcher {
 		await cmd.deferReply();
 		const lang = this.lang(cmd.guildId as string);
 		let message = Label.get(lang, "roles.intro");
-		const selectableRoles = cmd.options.data.map(v=> v.role);
+		let selectableRoles = cmd.options.data.map(v=> v.role);
+		const idsDone:{[key:string]:boolean} = {};
+		selectableRoles = selectableRoles.filter(v=> {
+			if(!v) return false;
+			if(idsDone[v.id]===true) return false;
+			idsDone[v.id] = true;
+			return true;
+		})
 
 		//Create as much messages as necessary depending on the number of roles VS
 		//the maximum reaction count allowed by discord
