@@ -118,6 +118,7 @@ npm install
 Create a `configs.json` file at the root of the project and add this content :
 ```json
 {
+	"SERVER_PORT":3023,
 	"BOT_NAME":"SlipLord",
 	"CMD_PREFIX":"",
 	"TIMEZONE_OFFSET":2,

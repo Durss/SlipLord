@@ -118,12 +118,10 @@
 			}
 		},
 		"roles": {
-			"intro":"Open the selector bellow and select all the roles you want",
+			"intro":"Click on buttons bellow to add or remove the corresponding role on your profile",
 			"list_placeholder":"Select...",
-			"add_ok":":white_check_mark: <@{user}>, you now have the selected roles !",
-			"del_all_intro":"To reset all your roles, click the button bellow",
-			"del_all":"🗑️ Remove all roles",
-			"del_all_ok":":white_check_mark: <@{user}>, all your roles have been reset."
+			"add_ok":":white_check_mark: the role **{role}** has been added to your profile!",
+			"del_ok":":white_check_mark: the role **{role}** has been removed to your profile!"
 		},
 		"twitch_live":{
 			"online":"🔴 {user} is live!",
@@ -142,12 +140,13 @@
 			"not_configured": ":x: This feature is missing some values in the `config.js` file to work. Fill them in and try again",
 			"user_added": ":white_check_mark: A notification will be sent on this channel when the Twitch user **{user}** goes live",
 			"user_removed": ":white_check_mark: The live notifications for the **{user}** are now disabled",
-			"user_notFound": ":x: The Twitch user **{user}** does not exists"
+			"user_notFound": ":x: The Twitch user **{user}** does not exists",
+			"user_list": "Twitch users you'll be notified about when they go live:"
 		},
 		"birthday": {
 			"invalid_date": "The specified date is invalid. Format must be the following : `{FORMAT}`",
 			"success": ":white_check_mark: Your birthday has been set to **{date}**",
-			"alert": "**🎉 🎊 Today is <@{user}>'s birthday 🎊 🎉**\nHappy birthday !"
+			"alert": "**🎉 🎊 Today is <@{user}>'s birthday 🎊 🎉**\nHappy birthday!"
 		},
 		"support": {
 			"channel_name": "{USER}",
@@ -284,15 +283,13 @@
 			}
 		},
 		"roles": {
-			"intro":"Sélectionne les rôles que tu souhaites t'attribuer dans la liste ci-dessous",
+			"intro":"Sélectionne les rôles que tu souhaites t'attribuer ou te retirer via les boutons ci-dessous",
 			"list_placeholder":"Sélection...",
-			"add_ok":":white_check_mark: <@{user}>, les roles t'ont bien été attribués !",
-			"del_all_intro":"Pour réinitialiser tes rôles, click le bouton ci-dessous",
-			"del_all":"Me supprimer tous les rôles",
-			"del_all_ok":":white_check_mark: <@{user}>, tous tes rôles t'ont bien été retirés."
+			"add_ok":":white_check_mark: le role **{role}** t'a bien été attribué!",
+			"del_ok":":white_check_mark: le rôle **{role}** t'a bien été retiré!"
 		},
 		"twitch_live":{
-			"online":"🔴 {user} est en live !",
+			"online":"🔴 {user} est en live!",
 			"offline":"{user} était en live.",
 			"category":"Catégorie",
 			"stream_duration":"Durée du stream",
@@ -308,12 +305,13 @@
 			"not_configured": ":x: Cette fonctionnalité nécessite des configurations dans le fichier `config.js`. Remplissez-les puis essayez à nouveau",
 			"user_added": ":white_check_mark: Une notification sera envoyée dans ce channel lorsque **{user}** sera en live sur Twitch",
 			"user_removed": ":white_check_mark: Les notifications de live de **{user}** sont maintenant désactivées",
-			"user_notFound": ":x: L'utilisateur·ice **{user}** Twitch n'existe pas"
+			"user_notFound": ":x: L'utilisateur·ice **{user}** Twitch n'existe pas",
+			"user_list": "Liste des utilisateurices Twitch pour lesquel·les vous serez notifié des lives:"
 		},
 		"birthday": {
 			"invalid_date": "La date spécifiée est invalide. Elle doit être au format suivant : `{FORMAT}`",
 			"success": ":white_check_mark: Ton anniversaire a bien été enregistré pour le **{date}**",
-			"alert": "**🎉 🎊 Aujourd'hui c'est l'anniversaire de <@{user}> 🎊 🎉**\nJoyeux anniversaire !"
+			"alert": "**🎉 🎊 Aujourd'hui c'est l'anniversaire de <@{user}> 🎊 🎉**\nJoyeux anniversaire!"
 		},
 		"support": {
 			"channel_name": "{USER}",

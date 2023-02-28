@@ -2,7 +2,7 @@ import { SlashCommandBuilder } from "@discordjs/builders";
 import { REST } from "@discordjs/rest";
 import { Routes } from "discord-api-types/v9";
 import * as Discord from "discord.js";
-import { ApplicationCommandPermissionTypes } from "discord.js/typings/enums";
+import { RESTPostAPIChatInputApplicationCommandsJSONBody } from "discord.js";
 import { Express } from "express-serve-static-core";
 import Config from "../utils/Config";
 import { Event, EventDispatcher } from "../utils/EventDispatcher";
@@ -11,7 +11,6 @@ import Logger from '../utils/Logger';
 import TwitchUtils, { TwitchTypes } from "../utils/TwitchUtils";
 import Utils from "../utils/Utils";
 import { AnonPoll, AnonPollOption, StorageController, TwitchLiveMessage, TwitchUser, UniquePoll } from "./StorageController";
-import {RESTPostAPIApplicationCommandsJSONBody } from 'discord-api-types/v10';
 
 /**
 * Created : 15/10/2020 
@@ -45,12 +44,13 @@ export default class DiscordController extends EventDispatcher {
 		if(!Config.DISCORDBOT_TOKEN) return;
 		
 		this.client = new Discord.Client({ intents: [
-			Discord.Intents.FLAGS.GUILDS,
-			Discord.Intents.FLAGS.GUILD_MEMBERS,
-			Discord.Intents.FLAGS.GUILD_MESSAGES,
-			Discord.Intents.FLAGS.DIRECT_MESSAGES,
-			Discord.Intents.FLAGS.GUILD_MESSAGE_REACTIONS,
-			Discord.Intents.FLAGS.DIRECT_MESSAGE_REACTIONS,
+			Discord.IntentsBitField.Flags.Guilds,
+			Discord.IntentsBitField.Flags.GuildMembers,
+			Discord.IntentsBitField.Flags.GuildMessages,
+			Discord.IntentsBitField.Flags.MessageContent,
+			Discord.IntentsBitField.Flags.DirectMessages,
+			Discord.IntentsBitField.Flags.GuildMessageReactions,
+			Discord.IntentsBitField.Flags.DirectMessageReactions,
 		] });
 
 		//Called when API is ready
@@ -167,7 +167,7 @@ export default class DiscordController extends EventDispatcher {
 				const channel = this.client.channels.cache.get(user.channel) as Discord.TextChannel;
 				const historyKey = user.uid +"_"+user.channel+"_"+guild.id;
 				
-				let usersStorage:{[key:string]:TwitchLiveMessage} = StorageController.getData("global", StorageController.TWITCH_USERS);
+				let usersStorage:{[key:string]:TwitchLiveMessage} = StorageController.getData("global", StorageController.TWITCH_LIVE_CARD);
 				if(!usersStorage) usersStorage = {};
 				const messageHistory = usersStorage[historyKey];
 				//Search for the last message sent by the bot for this user on this channel
@@ -209,7 +209,7 @@ export default class DiscordController extends EventDispatcher {
 							//Update the date on all the entries of the user on the global storage
 							const liveItem = usersStorage[historyKey];
 							liveItem.date = Date.now();
-							StorageController.setData("global", StorageController.TWITCH_USERS, usersStorage);
+							StorageController.setData("global", StorageController.TWITCH_LIVE_CARD, usersStorage);
 						}else{
 							//Send new message
 							message = await channel.send({embeds:[card]});
@@ -219,7 +219,7 @@ export default class DiscordController extends EventDispatcher {
 								date:Date.now(),
 								messageId:message.id,
 							};
-							StorageController.setData("global", StorageController.TWITCH_USERS, usersStorage);
+							StorageController.setData("global", StorageController.TWITCH_LIVE_CARD, usersStorage);
 						}
 
 						//Schedule message update 1min later
@@ -326,7 +326,7 @@ export default class DiscordController extends EventDispatcher {
 	 * @param interaction 
 	 * @returns 
 	 */
-	private async onCommand(interaction:Discord.Interaction):Promise<void> {
+	private async onCommand(interaction:Discord.Interaction<Discord.CacheType>):Promise<void> {
 		let lang = this.lang(interaction.guildId as string);
 		let user = await interaction.guild?.members.fetch(interaction.user.id);
 		if(interaction.isButton() && user) {
@@ -343,6 +343,7 @@ export default class DiscordController extends EventDispatcher {
 						if(role.editable && role.id != interaction.guildId) {
 							roleDeleted = true;
 							try {
+								if(role.id)
 								await user.roles.remove( role.id );
 							}catch(error) {
 								Logger.error("Failed removing", role.name)
@@ -352,7 +353,7 @@ export default class DiscordController extends EventDispatcher {
 
 					const m = await interaction.editReply(Label.get(lang, "roles.del_all_ok", [{id:"user", value:user.id}]));
 					await Utils.promisedTimeout(10000);
-					if(m.type == "REPLY") await m.delete();
+					if(m.type == Discord.MessageType.Reply) await m.delete();
 					break;
 				}
 
@@ -364,44 +365,35 @@ export default class DiscordController extends EventDispatcher {
 		}
 
 		//If it's a menu selection
-		if(user && interaction.isSelectMenu()) {
-			const cmd = interaction as Discord.SelectMenuInteraction;
-			let action = cmd.customId;
+		if(user && interaction.isButton()) {
+			const cmd = interaction as Discord.ButtonInteraction | Discord.SelectMenuInteraction;
+			let [action, params] = cmd.customId.split(":");
 			switch(action) {
 				case "install_selector":{
 					await interaction.deferUpdate();
-					if(cmd.guild) await this.installCommands(cmd.guild, cmd);
+					if(cmd.guild) await this.installCommands(cmd.guild, cmd as Discord.SelectMenuInteraction);
 					//Reset menu selection
 					await interaction.editReply({ content: interaction.message.content});
 					break;
 				}
 				case "role_selector":{
-					interaction.deferUpdate();
-					for (let i = 0; i < cmd.values.length; i++) {
-						await user.roles.add( cmd.values[i] );
+					await interaction.deferReply({ephemeral:true});
+					const role = interaction.guild?.roles.cache.get(params);
+					const roleName = role?.name ?? "role not found";
+					if(user.roles.cache.has(params)) {
+						await user.roles.remove( params );
+						interaction.editReply(Label.get(lang, "roles.del_ok", [{id:"role", value:roleName}]));
+					}else{
+						await user.roles.add( params );
+						interaction.editReply(Label.get(lang, "roles.add_ok", [{id:"role", value:roleName}]));
 					}
-					
-					//Reset selection
-					await interaction.editReply({ content: interaction.message.content });
-
-					//Confirm roles update
-					const answer = await interaction.channel?.send(Label.get(lang, "roles.add_ok", [{id:"user", value:user.id}]));
-					if(answer) {
-						setTimeout(async _=> {
-							//Delete confirmation
-							try {
-								await answer.delete();
-							}catch(error) {};
-						}, 10000);
-					}
-					break;
 				}
 			}
 		}
 
 		//If it's a command execution
 		if(interaction.isCommand()) {
-			const cmd = interaction as Discord.CommandInteraction;
+			const cmd = interaction as Discord.ChatInputCommandInteraction;
 			let action = cmd.commandName;
 			try {
 				const subCommand = cmd.options.getSubcommand();
@@ -432,7 +424,7 @@ export default class DiscordController extends EventDispatcher {
 
 					const lang = this.lang(cmd.guildId as string);
 					
-					let userID = cmd.options.getString("user_id");
+					let userID = cmd.options.get("user_id")?.value as string;
 					const user = cmd.options.getMember("user") as Discord.GuildMember;
 					if(user) userID = user.id;
 					
@@ -451,13 +443,13 @@ export default class DiscordController extends EventDispatcher {
 				
 				case "admin/leave_notification": {
 					await cmd.deferReply({ephemeral:true});
-					const chan = cmd.options.getChannel("channel");
-					const disable = cmd.options.getBoolean("disable");
+					const chan = cmd.options.get("channel")?.channel;
+					const disable = cmd.options.get("disable")?.value as boolean;
 					if(disable) {
 						StorageController.delData(cmd.guildId as string, StorageController.LEAVE_CHANNEL);
 						cmd.editReply(Label.get(lang, "admin.leave_chan_disabled"));
 					}else{
-						if(chan?.type == "GUILD_TEXT") {
+						if(chan?.type == Discord.ChannelType.GuildText) {
 							StorageController.setData(cmd.guildId as string, StorageController.LEAVE_CHANNEL, cmd.channelId);
 							cmd.editReply(Label.get(lang, "admin.leave_chan_ok", [{id:"target", value:chan.id}]));
 						}else if(chan){
@@ -469,8 +461,8 @@ export default class DiscordController extends EventDispatcher {
 	
 				case "support/target": {
 					await cmd.deferReply({ephemeral:true});
-					const chan = cmd.options.getChannel("category");
-					if(chan?.type == "GUILD_CATEGORY") {
+					const chan = cmd.options.get("category")?.channel;
+					if(chan?.type == Discord.ChannelType.GuildCategory) {
 						StorageController.setData(cmd.guildId as string, StorageController.SUPPORT_TARGET, chan.id);
 						cmd.editReply(Label.get(lang, "support.configure_success", [{id:"target", value:chan.id}]));
 					}else if(chan){
@@ -519,7 +511,7 @@ export default class DiscordController extends EventDispatcher {
 	private async onMessage(message:Discord.Message):Promise<void> {
 		// console.log("Message received : ", message.author.bot, message.channel.type, message.content);
 		if (message.author.bot) return;
-		if (message.channel.type == "DM") return;
+		if (message.channel.type == Discord.ChannelType.DM) return;
 		
 		if(message.content.indexOf("!") == 0) this.parseCommand(message);
 	}
@@ -529,8 +521,7 @@ export default class DiscordController extends EventDispatcher {
 	 * @param text 
 	 */
 	private async parseCommand(message:Discord.Message):Promise<void> {
-		let isAdmin = message.member?.permissions.has("ADMINISTRATOR");
-		
+		let isAdmin = message.member?.permissions.has(Discord.PermissionFlagsBits.Administrator);
 		let txt = message.content.substring(1);
 		let chunks = txt.split(/\s/gi);
 		let	cmd = (chunks.shift() as string).toLowerCase();
@@ -549,16 +540,17 @@ export default class DiscordController extends EventDispatcher {
 				const lang = this.lang(message.guildId as string);
 				const chanName = Label.get(lang, "support.channel_name", [{id:"user", value:message.member?.displayName as string}]);
 				console.log(lang, Label.get(lang, "support.channel_name"), chanName, message.member?.displayName);
-				const chan = await message.guild?.channels.create(chanName, { 
-					type: "GUILD_TEXT", // syntax has changed a bit
-					permissionOverwrites: [{ // same as before
+				const chan = await message.guild?.channels.create({ 
+					name:chanName,
+					type: Discord.ChannelType.GuildText,
+					permissionOverwrites: [{
 						id: message.guild.id,
-						allow: [Discord.Permissions.FLAGS.ADMINISTRATOR],
-						deny: [Discord.Permissions.FLAGS.VIEW_CHANNEL],
+						allow: [Discord.PermissionsBitField.Flags.Administrator],
+						deny: [Discord.PermissionsBitField.Flags.ViewChannel],
 					}]
 				});
 				if(chan) {
-					chan.permissionOverwrites.create(message.member as Discord.GuildMember, {VIEW_CHANNEL:true});
+					chan.permissionOverwrites.create(message.member as Discord.GuildMember, {ViewChannel:true});
 				}
 				message.channel.send("Channel Created!");
 				break;
@@ -694,7 +686,7 @@ export default class DiscordController extends EventDispatcher {
 	private async sendInstallCard(message:Discord.Message):Promise<void> {
 		const lang = this.lang(message.guildId as string);
 
-		const listItems:Discord.MessageSelectOptionData[] = [];
+		const listItems:Discord.SelectMenuComponentOptionData[] = [];
 		listItems.push( { label: Label.get(lang, "admin.install.all.label"),		value: "all",				description:Label.get(lang, "admin.install.all.description") } );
 		listItems.push( { label: Label.get(lang, "admin.install.admin.label"),		value: "admin_commands",	description:Label.get(lang, "admin.install.admin.description") } );
 		listItems.push( { label: Label.get(lang, "admin.install.roles.label"),		value: "roles_selector",	description:Label.get(lang, "admin.install.roles.description") } );
@@ -705,15 +697,15 @@ export default class DiscordController extends EventDispatcher {
 		// listItems.push( { label: Label.get(lang, "admin.install.inactivity.label"),	value: "inactivity",		description:Label.get(lang, "admin.install.inactivity.description") } );
 		listItems.push( { label: Label.get(lang, "admin.install.remove.label"),		value: "remove_all",		description:Label.get(lang, "admin.install.remove.description") } );
 
-		const list = new Discord.MessageSelectMenu()
+		const list = new Discord.StringSelectMenuBuilder()
 			.setCustomId('install_selector')
 			.setPlaceholder( Label.get(lang, "admin.install.selector_placeholder") )
 			.setMinValues(1)
 			.setMaxValues(listItems.length)
 			.addOptions(listItems);
 		
-		const row = new Discord.MessageActionRow()
-		.addComponents([list]);
+		const row = new Discord.ActionRowBuilder<Discord.StringSelectMenuBuilder>()
+		.addComponents(list);
 
 		await message.channel.send({content:Label.get(lang, "admin.install.intro"), components:[row]});
 	}
@@ -740,7 +732,7 @@ export default class DiscordController extends EventDispatcher {
 		const lang = this.lang(guild.id);
 		
 		const roles = new SlashCommandBuilder()
-			.setDefaultMemberPermissions(Discord.Permissions.FLAGS.ADMINISTRATOR)
+			.setDefaultMemberPermissions(Discord.PermissionsBitField.Flags.Administrator)
 			.setName(Config.CMD_PREFIX+'roles_selector')
 			.setDescription(Label.get(lang, "commands.role_selector.description"));
 			
@@ -756,7 +748,7 @@ export default class DiscordController extends EventDispatcher {
 		}
 		
 		const admin = new SlashCommandBuilder()
-			.setDefaultMemberPermissions(Discord.Permissions.FLAGS.ADMINISTRATOR)
+			.setDefaultMemberPermissions(Discord.PermissionsBitField.Flags.Administrator)
 			.setName(Config.CMD_PREFIX+'admin')
 			.setDescription(Label.get(lang, "commands.admin.description"))
 			.addSubcommand(subcommand =>
@@ -799,7 +791,7 @@ export default class DiscordController extends EventDispatcher {
 			
 		
 		const inactivity = new SlashCommandBuilder()
-			.setDefaultMemberPermissions(Discord.Permissions.FLAGS.ADMINISTRATOR)
+			.setDefaultMemberPermissions(Discord.PermissionsBitField.Flags.Administrator)
 			.setName(Config.CMD_PREFIX+'inactivity')
 			.setDescription(Label.get(lang, "commands.admin.inactivity.description"))
 			.addNumberOption(option => option.setRequired(true).setName('days').setDescription(Label.get(lang, "commands.admin.inactivity.days")))
@@ -817,7 +809,7 @@ export default class DiscordController extends EventDispatcher {
 			.addRoleOption(option => option.setName('role_del_5').setDescription(Label.get(lang, "commands.admin.inactivity.role_del")));
 
 		const twitch = new SlashCommandBuilder()
-			.setDefaultMemberPermissions(Discord.Permissions.FLAGS.ADMINISTRATOR)
+			.setDefaultMemberPermissions(Discord.PermissionsBitField.Flags.Administrator)
 			.setName(Config.CMD_PREFIX+'twitch')
 			.setDescription(Label.get(lang, "commands.twitch.description"))
 			.addStringOption(option => option.setRequired(false).setName('watch_login').setDescription(Label.get(lang, "commands.twitch.watch")))
@@ -844,7 +836,7 @@ export default class DiscordController extends EventDispatcher {
 			.addStringOption(option => option.setRequired(true).setName('date').setDescription(Label.get(lang, "commands.birthday.option")))
 
 		const support = new SlashCommandBuilder()
-			.setDefaultMemberPermissions(Discord.Permissions.FLAGS.ADMINISTRATOR)
+			.setDefaultMemberPermissions(Discord.PermissionsBitField.Flags.Administrator)
 			.setName(Config.CMD_PREFIX+'support')
 			.setDescription(Label.get(lang, "commands.support.description"))
 			.addSubcommand(subcommand =>
@@ -861,7 +853,7 @@ export default class DiscordController extends EventDispatcher {
 			);
 
 
-		const list:RESTPostAPIApplicationCommandsJSONBody[] = [];
+		const list:RESTPostAPIChatInputApplicationCommandsJSONBody[] = [];
 		const all =  cmd.values.indexOf("all") > -1;
 		if(all || cmd.values.indexOf("admin_commands") > -1)	list.push(admin.toJSON());
 		if(all || cmd.values.indexOf("support") > -1)			list.push(support.toJSON());
@@ -915,12 +907,26 @@ export default class DiscordController extends EventDispatcher {
 	 */
 	private async twitchLiveAlertChannel(cmd:Discord.CommandInteraction):Promise<void> {
 		let watch:boolean = false;
-		let key = "unwatch_login";
+		let key = "";
 		if(cmd.options.get("watch_login")) {
 			watch = true;
 			key = "watch_login";
 		}
+		if(cmd.options.get("unwatch_login")) {
+			watch = false;
+			key = "unwatch_login";
+		}
+		
 		const lang = this.lang(cmd.guildId as string);
+
+		if(key === "") {
+			const users:TwitchUser[] = StorageController.getData(cmd.guildId as string, StorageController.TWITCH_USERS);
+			const userNames = users.map(v=>"\n ⚈ **" + v.login + "** => <#" + v.channel + ">");
+			const message = Label.get(lang, "twitch.user_list") + userNames;
+			cmd.reply({content:message, ephemeral:true});
+			return;
+		}
+
 		if(!Config.IS_TWITCH_CONFIGURED) {
 			cmd.reply({content:Label.get(lang, "twitch.not_configured"), ephemeral:true});
 			return;
@@ -961,7 +967,7 @@ export default class DiscordController extends EventDispatcher {
 	 * @param offlineMode 
 	 * @returns 
 	 */
-	private buildLiveCard(guildId:string, infos:TwitchTypes.StreamInfo, userInfo:TwitchTypes.UserInfo, onlineMode:boolean = true):Discord.MessageEmbed {
+	private buildLiveCard(guildId:string, infos:TwitchTypes.StreamInfo, userInfo:TwitchTypes.UserInfo, onlineMode:boolean = true):Discord.EmbedBuilder {
 		const lang = this.lang(guildId);
 		if(!onlineMode) {
 			let url = userInfo.offline_image_url;
@@ -980,7 +986,7 @@ export default class DiscordController extends EventDispatcher {
 			iconURL: userInfo.profile_image_url,
 		}
 
-		let card = new Discord.MessageEmbed();
+		let card = new Discord.EmbedBuilder();
 		card.setTitle(infos.title);
 		card.setColor("#a970ff");
 		card.setURL(url);
@@ -1022,12 +1028,12 @@ export default class DiscordController extends EventDispatcher {
 	private async sendSupportForm(cmd:Discord.CommandInteraction):Promise<void> {
 		await cmd.deferReply();
 		const lang = this.lang(cmd.guildId as string);
-		const support = new Discord.MessageButton({
+		const support = new Discord.ButtonBuilder({
 			label: Label.get(lang, "support.create"),
-			style:"DANGER",
+			style:Discord.ButtonStyle.Danger,
 			customId:"support_create"
 		})
-		const row = new Discord.MessageActionRow()
+		const row = new Discord.ActionRowBuilder<Discord.ButtonBuilder>()
 		.addComponents([support]);
 		let message = cmd.options.get("intro")?.value as string;
 		message = message.replace(/\\n|\\r/gi, "\n");//convert \n and \r to actual linebreaks
@@ -1046,17 +1052,18 @@ export default class DiscordController extends EventDispatcher {
 		const lang = this.lang(interaction.guildId as string);
 		const chanTarget = StorageController.getData(interaction.guildId as string, StorageController.SUPPORT_TARGET) as string;
 		const chanName = Label.get(lang, "support.channel_name", [{id:"user", value:interaction.member?.user.username as string}]);
-		const chan = await interaction.guild?.channels.create(chanName, {
-			type: "GUILD_TEXT",
+		const chan = await interaction.guild?.channels.create({
+			name:chanName,
+			type: Discord.ChannelType.GuildText,
 			parent:chanTarget,
 			permissionOverwrites: [{
 				id: interaction.guildId as string,
-				allow: [Discord.Permissions.FLAGS.ADMINISTRATOR],
-				deny: [Discord.Permissions.FLAGS.VIEW_CHANNEL],
+				allow: [Discord.PermissionsBitField.Flags.Administrator],
+				deny: [Discord.PermissionsBitField.Flags.ViewChannel],
 			}]
 		});
 		if(chan && interaction.member) {
-			await chan.permissionOverwrites.create(interaction.member.user.id, {VIEW_CHANNEL:true});
+			await chan.permissionOverwrites.create(interaction.member.user.id, {ViewChannel:true});
 			interaction.editReply(Label.get(lang, "support.creation_success", [{id:"target", value:chan.id}]));
 		}
 	}
@@ -1068,49 +1075,54 @@ export default class DiscordController extends EventDispatcher {
 		await cmd.deferReply();
 		const lang = this.lang(cmd.guildId as string);
 		let message = Label.get(lang, "roles.intro");
-		const selectableRoles = cmd.options.data.map(v=> v.role);
+		let selectableRoles = cmd.options.data.map(v=> v.role);
+		const idsDone:{[key:string]:boolean} = {};
+		selectableRoles = selectableRoles.filter(v=> {
+			if(!v) return false;
+			if(idsDone[v.id]===true) return false;
+			idsDone[v.id] = true;
+			return true;
+		})
 
 		//Create as much messages as necessary depending on the number of roles VS
 		//the maximum reaction count allowed by discord
 		do {
 			let roles = selectableRoles.splice(0, this.MAX_LIST_ITEMS);
-			const listItems:{label:string, value:string}[] = [];
+			
+			let count = -1;
+			const rows:Discord.ActionRowBuilder<Discord.ButtonBuilder>[] = [];
+			let row:Discord.ActionRowBuilder<Discord.ButtonBuilder>;
 			roles.forEach(r => {
 				if(r) {
-					listItems.push(
-						{
-							label: r.name,
-							value: r.id,
-						}
+					if((++count)%5 == 0) {
+						row = new Discord.ActionRowBuilder<Discord.ButtonBuilder>()
+						rows.push(row);
+					}
+					row.addComponents(
+						new Discord.ButtonBuilder()
+							.setCustomId('role_selector:'+r.id)
+							.setLabel(r.name)
+							.setStyle(Discord.ButtonStyle.Primary),
 					)
 				}
 			});
 
-			const list = new Discord.MessageSelectMenu()
-				.setCustomId('role_selector')
-				.setPlaceholder(Label.get(lang, "roles.list_placeholder"))
-				.setMinValues(1)
-				.setMaxValues(listItems.length)
-				.addOptions(listItems);
-			const row = new Discord.MessageActionRow()
-			.addComponents([list]);
-
 			if(cmd.channel) {
-				await cmd.channel.send({content:message, components:[row]});
+				await cmd.channel.send({content:message, components:rows});
 			}
 
-			if(selectableRoles.length == 0) {
-				const deleteBt = new Discord.MessageButton({
-					label: Label.get(lang, "roles.del_all"),
-					style:"DANGER",
-					customId:"roles_delete_all"
-				})
-				const row = new Discord.MessageActionRow()
-				.addComponents([deleteBt]);
-				if(cmd.channel) {
-					await cmd.channel.send({content:Label.get(lang, "roles.del_all_intro"), components:[row]});
-				}
-			}
+			// if(selectableRoles.length == 0) {
+			// 	const deleteBt = new Discord.ButtonBuilder({
+			// 		label: Label.get(lang, "roles.del_all"),
+			// 		style:Discord.ButtonStyle.Danger,
+			// 		customId:"roles_delete_all"
+			// 	})
+			// 	const row = new Discord.ActionRowBuilder<Discord.ButtonBuilder>()
+			// 	.addComponents([deleteBt]);
+			// 	if(cmd.channel) {
+			// 		await cmd.channel.send({content:Label.get(lang, "roles.del_all_intro"), components:[row]});
+			// 	}
+			// }
 		}while(selectableRoles.length > 0);
 		const m = await cmd.fetchReply() as Discord.Message;
 		await m.delete();
@@ -1226,8 +1238,12 @@ export default class DiscordController extends EventDispatcher {
 		if(!birthdays) birthdays = {};
 		birthdays[cmd.user.id] = {day, month};
 
+		function toDigits(n:number):string {
+			if(n < 10) return "0"+n;
+			return n.toString();
+		}
 		StorageController.setData(cmd.guildId as string, StorageController.BIRTHDAYS, birthdays);
-		cmd.editReply( Label.get(lang, "birthday.success", [{id:"date", value:day+"-"+month}]));
+		cmd.editReply( Label.get(lang, "birthday.success", [{id:"date", value:toDigits(day)+"/"+toDigits(month)}]));
 	}
 
 	/**
