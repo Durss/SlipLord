@@ -13,6 +13,7 @@ export class StorageController {
 	private static cachepath:string = Config.UPLOAD_PATH;
 
 	public static ANON_POLLS:string = "ANON_POLLS";
+	public static UNIQUE_POLLS:string = "UNIQUE_POLLS";
 	public static LANGUAGE:string = "LANGUAGE";
 	public static BIRTHDAY_CHANNEL:string = "BIRTHDAY_CHANNEL";
 	public static LEAVE_CHANNEL:string = "LEAVE_CHANNEL";
@@ -164,6 +165,11 @@ export class StorageController {
 
 		return path;
 	}
+}
+
+export interface UniquePoll {
+	id:string;
+	chan:string;
 }
 
 export interface AnonPoll {

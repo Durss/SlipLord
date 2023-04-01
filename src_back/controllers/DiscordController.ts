@@ -10,7 +10,7 @@ import Label from "../utils/Label";
 import Logger from '../utils/Logger';
 import TwitchUtils, { TwitchTypes } from "../utils/TwitchUtils";
 import Utils from "../utils/Utils";
-import { AnonPoll, AnonPollOption, StorageController, TwitchLiveMessage, TwitchUser } from "./StorageController";
+import { AnonPoll, AnonPollOption, StorageController, TwitchLiveMessage, TwitchUser, UniquePoll } from "./StorageController";
 
 /**
 * Created : 15/10/2020 
@@ -59,7 +59,7 @@ export default class DiscordController extends EventDispatcher {
 		//Called when using a /command
 		this.client.on("interactionCreate", (interaction) => this.onCommand(interaction))
 		//Called when a reaction is added to a message
-		this.client.on("messageReactionAdd", (reaction) => this.onAddReaction(reaction as Discord.MessageReaction));
+		this.client.on("messageReactionAdd", (reaction, user) => this.onAddReaction(reaction as Discord.MessageReaction, user as Discord.User));
 		//Called when a reaction is removed from a message
 		this.client.on("messageReactionRemove", (reaction) => this.onRemoveReaction(reaction as Discord.MessageReaction));
 		//Called when a new member joins the server
@@ -278,24 +278,46 @@ export default class DiscordController extends EventDispatcher {
 			
 			//Loads up all the polls messages in cache so we can receive
 			//the reactions
-			const polls:AnonPoll[] = StorageController.getData(guild.id, StorageController.ANON_POLLS);
-			if(polls) {
-				for (let i = 0; i < polls.length; i++) {
-					const poll = polls[i];
+			const anonPolls:AnonPoll[] = StorageController.getData(guild.id, StorageController.ANON_POLLS);
+			const uniquePolls:UniquePoll[] = StorageController.getData(guild.id, StorageController.UNIQUE_POLLS);
+
+			//Listen for anon polls reactions
+			if(anonPolls?.length > 0) {
+				for (let i = 0; i < anonPolls.length; i++) {
+					const poll = anonPolls[i];
 					const chan = await guild.channels.cache.get(poll.chan)?.fetch() as Discord.TextChannel;
 					try {
 						//Simply load the message in cache to receive the reactions updates
 						await chan.messages.fetch(poll.id);
 					}catch(err) {
 						//Cleanup the poll from storage
-						polls.splice(i,1);
+						anonPolls.splice(i,1);
 						i--;
 					}
 				}
-				StorageController.setData(guild.id, StorageController.ANON_POLLS, polls);
+				StorageController.setData(guild.id, StorageController.ANON_POLLS, anonPolls);
+				Logger.success(anonPolls.length + " anon polls listened successfully");
+			}
+			
+			//Listen for unique votes reactions
+			if(uniquePolls?.length > 0) {
+				for (let i = 0; i < uniquePolls.length; i++) {
+					const poll = uniquePolls[i];
+					const chan = await guild.channels.cache.get(poll.chan)?.fetch() as Discord.TextChannel;
+					try {
+						//Simply load the message in cache to receive the reactions updates
+						await chan.messages.fetch(poll.id);
+					}catch(err) {
+						//Cleanup the poll from storage
+						console.log(err);
+						uniquePolls.splice(i,1);
+						i--;
+					}
+				}
+				StorageController.setData(guild.id, StorageController.UNIQUE_POLLS, uniquePolls);
+				Logger.success(uniquePolls.length + " unique vote polls listened successfully");
 			}
 		}
-		Logger.success("Anon polls listened successfully");
 	}
 
 	/**
@@ -559,45 +581,66 @@ export default class DiscordController extends EventDispatcher {
 	/**
 	 * Called when someone uses a reaction on a message
 	 */
-	private async onAddReaction(reaction:Discord.MessageReaction):Promise<void> {
-		let anonPolls = StorageController.getData(reaction.message.guildId as string, StorageController.ANON_POLLS) as AnonPoll[];
-		if(anonPolls){
-			//Check if react to an anon poll and update it if so
-			for (let i = 0; i < anonPolls.length; i++) {
-				const p = anonPolls[i];
-				if(p.id === reaction.message.id) {
-					//Found an anon poll matching the reaction source
-					const users = reaction.users.cache.entries();
-					while(true){
-						const user = users.next();
-						let update = false;
-						if(user.done) break;
-						if(user.value[0] === reaction.message.author?.id) continue;
-						p.opt.forEach(option=> {
-							if(option.e === reaction.emoji.name) {
-								if(option.v.indexOf(user.value[0]) == -1) {
-									option.v.push(user.value[0]);
-									update = true;
-								}else{
-									const index = option.v.indexOf(user.value[0]);
-									option.v.splice(index, 1);
-									update = true;
-								}
-							}else if(p.unique === true && option.v.indexOf(user.value[0]) > -1) {
-								const index = option.v.indexOf(user.value[0]);
-								option.v.splice(index, 1);
-								update = true;
-							}
-						});
-						if(update) {
-							const lang = this.lang(reaction.message.guildId as string);
-							this.updateAnonPoll(p, reaction, lang);
+	private async onAddReaction(reaction:Discord.MessageReaction, userOrigin:Discord.User):Promise<void> {
+		const anonPolls = StorageController.getData(reaction.message.guildId as string, StorageController.ANON_POLLS) as AnonPoll[];
+		const uniquePoll = StorageController.getData(reaction.message.guildId as string, StorageController.UNIQUE_POLLS) as UniquePoll[];
+		let anonVote:AnonPoll|undefined = anonPolls?.find(v=> v.id === reaction.message.id);
+		let uniqueVote:UniquePoll|undefined = uniquePoll?.find(v=> v.id === reaction.message.id);
+		// console.log("ADD REACTION");
+		// console.log(anonVote);
+		// console.log(uniqueVote);
+
+		if(anonVote){
+			//Found an anon poll matching the reaction source
+			const users = reaction.users.cache.entries();
+			while(true){
+				const user = users.next();
+				let update = false;
+				if(user.done) break;
+				if(user.value[0] === reaction.message.author?.id) continue;
+				anonVote.opt.forEach(option=> {
+					if(option.e === reaction.emoji.name) {
+						if(option.v.indexOf(user.value[0]) == -1) {
+							option.v.push(user.value[0]);
+							update = true;
+						}else{
+							const index = option.v.indexOf(user.value[0]);
+							option.v.splice(index, 1);
+							update = true;
 						}
-						reaction.users.remove(user.value[0]);
+					}else if(anonVote!.unique === true && option.v.indexOf(user.value[0]) > -1) {
+						const index = option.v.indexOf(user.value[0]);
+						option.v.splice(index, 1);
+						update = true;
 					}
+				});
+				if(update) {
+					const lang = this.lang(reaction.message.guildId as string);
+					this.updateAnonPoll(anonVote, reaction, lang);
 				}
+				reaction.users.remove(user.value[0]);
 			}
 			StorageController.setData(reaction.message.guildId as string, StorageController.ANON_POLLS, anonPolls);
+		}else
+
+		if(uniqueVote) {
+			const list = reaction.message.reactions.cache.entries();
+			while(true) {
+				const item = list.next();
+				if(item.done) break;
+				const r = item?.value[1];
+				if(r.emoji.name != reaction.emoji.name) {
+					const users = (await r.users.fetch()).entries();
+					while(true) {
+						const u = users.next();
+						if(u.done) break;
+						if(u.value[0] == userOrigin.id) {
+							r.users.remove(u.value[0]);
+
+						}
+					} 
+				}
+			}
 		}
 	}
 
@@ -1144,6 +1187,12 @@ export default class DiscordController extends EventDispatcher {
 					opt:options,
 				})
 				StorageController.setData(cmd.guildId as string, StorageController.ANON_POLLS, polls);
+			}else if(uniqueMode) {
+				let polls:UniquePoll[] = StorageController.getData(cmd.guildId as string, StorageController.UNIQUE_POLLS);
+				if(!polls) polls = [];
+				polls.push({id:discordMessage.id, chan:discordMessage.channelId});
+				StorageController.setData(cmd.guildId as string, StorageController.UNIQUE_POLLS, polls);
+
 			}
 		}
 
