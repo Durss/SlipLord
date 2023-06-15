@@ -363,9 +363,8 @@ export default class DiscordController extends EventDispatcher {
 				}
 			}
 		}
-
-		//If it's a menu selection
-		if(user && interaction.isButton()) {
+			
+		if(interaction.isAnySelectMenu() && user) {
 			const cmd = interaction as Discord.ButtonInteraction | Discord.SelectMenuInteraction;
 			let [action, params] = cmd.customId.split(":");
 			switch(action) {
@@ -728,6 +727,8 @@ export default class DiscordController extends EventDispatcher {
 				value:l.id
 			});
 		}
+
+		console.log("INSTALL COMMANDS");
 
 		const lang = this.lang(guild.id);
 		
