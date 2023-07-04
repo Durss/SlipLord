@@ -330,7 +330,8 @@ export default class DiscordController extends EventDispatcher {
 		let lang = this.lang(interaction.guildId as string);
 		let user = await interaction.guild?.members.fetch(interaction.user.id);
 		if(interaction.isButton() && user) {
-			switch(interaction.customId){
+			let [action, params] = interaction.customId.split(":");
+			switch(action){
 				case "roles_delete_all": {
 					await interaction.deferReply();
 					//Delete all roles of the user
@@ -361,6 +362,19 @@ export default class DiscordController extends EventDispatcher {
 					await this.createSupport(interaction);
 					break;
 				}
+
+				case "role_selector":{
+					await interaction.deferReply({ephemeral:true});
+					const role = interaction.guild?.roles.cache.get(params);
+					const roleName = role?.name ?? "role not found";
+					if(user.roles.cache.has(params)) {
+						await user.roles.remove( params );
+						interaction.editReply(Label.get(lang, "roles.del_ok", [{id:"role", value:roleName}]));
+					}else{
+						await user.roles.add( params );
+						interaction.editReply(Label.get(lang, "roles.add_ok", [{id:"role", value:roleName}]));
+					}
+				}
 			}
 		}
 			
@@ -374,18 +388,6 @@ export default class DiscordController extends EventDispatcher {
 					//Reset menu selection
 					await interaction.editReply({ content: interaction.message.content});
 					break;
-				}
-				case "role_selector":{
-					await interaction.deferReply({ephemeral:true});
-					const role = interaction.guild?.roles.cache.get(params);
-					const roleName = role?.name ?? "role not found";
-					if(user.roles.cache.has(params)) {
-						await user.roles.remove( params );
-						interaction.editReply(Label.get(lang, "roles.del_ok", [{id:"role", value:roleName}]));
-					}else{
-						await user.roles.add( params );
-						interaction.editReply(Label.get(lang, "roles.add_ok", [{id:"role", value:roleName}]));
-					}
 				}
 			}
 		}
