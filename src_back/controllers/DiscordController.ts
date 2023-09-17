@@ -330,7 +330,8 @@ export default class DiscordController extends EventDispatcher {
 		let lang = this.lang(interaction.guildId as string);
 		let user = await interaction.guild?.members.fetch(interaction.user.id);
 		if(interaction.isButton() && user) {
-			switch(interaction.customId){
+			let [action, params] = interaction.customId.split(":");
+			switch(action){
 				case "roles_delete_all": {
 					await interaction.deferReply();
 					//Delete all roles of the user
@@ -361,21 +362,7 @@ export default class DiscordController extends EventDispatcher {
 					await this.createSupport(interaction);
 					break;
 				}
-			}
-		}
 
-		//If it's a menu selection
-		if(user && interaction.isButton()) {
-			const cmd = interaction as Discord.ButtonInteraction | Discord.SelectMenuInteraction;
-			let [action, params] = cmd.customId.split(":");
-			switch(action) {
-				case "install_selector":{
-					await interaction.deferUpdate();
-					if(cmd.guild) await this.installCommands(cmd.guild, cmd as Discord.SelectMenuInteraction);
-					//Reset menu selection
-					await interaction.editReply({ content: interaction.message.content});
-					break;
-				}
 				case "role_selector":{
 					await interaction.deferReply({ephemeral:true});
 					const role = interaction.guild?.roles.cache.get(params);
@@ -387,6 +374,20 @@ export default class DiscordController extends EventDispatcher {
 						await user.roles.add( params );
 						interaction.editReply(Label.get(lang, "roles.add_ok", [{id:"role", value:roleName}]));
 					}
+				}
+			}
+		}
+			
+		if(interaction.isAnySelectMenu() && user) {
+			const cmd = interaction as Discord.ButtonInteraction | Discord.SelectMenuInteraction;
+			let [action, params] = cmd.customId.split(":");
+			switch(action) {
+				case "install_selector":{
+					await interaction.deferUpdate();
+					if(cmd.guild) await this.installCommands(cmd.guild, cmd as Discord.SelectMenuInteraction);
+					//Reset menu selection
+					await interaction.editReply({ content: interaction.message.content});
+					break;
 				}
 			}
 		}
@@ -729,6 +730,8 @@ export default class DiscordController extends EventDispatcher {
 				value:l.id
 			});
 		}
+
+		console.log("INSTALL COMMANDS");
 
 		const lang = this.lang(guild.id);
 		
