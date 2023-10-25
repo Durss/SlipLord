@@ -131,6 +131,7 @@ export default class DiscordController extends EventDispatcher {
 					const b = birthdays[uid];
 					//Check if today is the birthday and the alert hasn't been sent for this year
 					if(b.day == todayDay && b.month == todayMonth
+					&& channel && channel.send
 					&& (!b.lastAlert || new Date(b.lastAlert).getFullYear() != todayYear)) {
 						channel.send(Label.get(lang, "birthday.alert", [{id:"user", value:uid}]));
 						b.lastAlert = Date.now();
@@ -157,6 +158,7 @@ export default class DiscordController extends EventDispatcher {
 			const guild:Discord.Guild = guildI.value[1];
 
 			const users:TwitchUser[] = StorageController.getData(guild.id, StorageController.TWITCH_USERS);
+			if(!users) return;
 			let userInfos = await TwitchUtils.loadChannelsInfo(null, [uid]);
 			let userInfo = userInfos[0];
 			for (let i = 0; i < users.length; i++) {
@@ -677,7 +679,9 @@ export default class DiscordController extends EventDispatcher {
 		const lang = this.lang(member.guild.id);
 		const chanId = StorageController.getData(member.guild.id, StorageController.LEAVE_CHANNEL);
 		const channel = await member.guild.channels.fetch(chanId) as Discord.TextChannel;
-		channel.send(Label.get(lang, "admin.leave_chan_notification", [{id:"user", value:member.user.tag}]));
+		if(channel && channel.send){
+			channel.send(Label.get(lang, "admin.leave_chan_notification", [{id:"user", value:member.user.tag}]));
+		}
 	}
 
 	/**
@@ -900,7 +904,7 @@ export default class DiscordController extends EventDispatcher {
 			}
 		}
 		//*/
-		if(cmd?.channel) {
+		if(cmd?.channel && cmd.channel.send) {
 			await cmd.channel.send(Label.get(lang, "admin.install.done"));
 		}
 	}
@@ -1040,7 +1044,7 @@ export default class DiscordController extends EventDispatcher {
 		.addComponents([support]);
 		let message = cmd.options.get("intro")?.value as string;
 		message = message.replace(/\\n|\\r/gi, "\n");//convert \n and \r to actual linebreaks
-		if(cmd.channel) {
+		if(cmd.channel && cmd.channel.send) {
 			await cmd.channel.send({content:message, components:[row]});
 		}
 		const m = await cmd.fetchReply() as Discord.Message;
@@ -1110,7 +1114,7 @@ export default class DiscordController extends EventDispatcher {
 				}
 			});
 
-			if(cmd.channel) {
+			if(cmd.channel && cmd.channel.send) {
 				await cmd.channel.send({content:message, components:rows});
 			}
 
@@ -1169,7 +1173,7 @@ export default class DiscordController extends EventDispatcher {
 			return option.e + " ➔ "+ count + option.n;
 		}).join("\n");
 
-		if(cmd.channel) {
+		if(cmd.channel && cmd.channel.send) {
 			let discordMessage = await cmd.channel.send(title + "\n" + msg);
 			options.forEach(async v => {
 				try {
