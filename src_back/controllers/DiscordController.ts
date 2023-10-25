@@ -675,9 +675,10 @@ export default class DiscordController extends EventDispatcher {
 		const leaveChan = StorageController.LEAVE_CHANNEL;
 		if(!leaveChan) return;
 		
-		Logger.info("Member left !", member.user.tag);
+		Logger.info("Member ", member.user.tag, "left guild", member.guild?.id);
 		const lang = this.lang(member.guild.id);
 		const chanId = StorageController.getData(member.guild.id, StorageController.LEAVE_CHANNEL);
+		if(!chanId) return;//No chan configured
 		const channel = await member.guild.channels.fetch(chanId) as Discord.TextChannel;
 		if(channel && channel.send){
 			channel.send(Label.get(lang, "admin.leave_chan_notification", [{id:"user", value:member.user.tag}]));
