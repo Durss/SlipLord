@@ -177,6 +177,7 @@ export default class EventSubController extends EventDispatcher {
 	private async eventSub(req:Request, res:Response):Promise<void> {
 		let json:EventSubMessage = <EventSubMessage>req.body;
 		let id = <string>req.headers["twitch-eventsub-message-id"];
+		let type = <string>req.headers["twitch-eventsub-message-type"];
 		let data = req.body.event;
 
 		//Filter out IDs already parsed
@@ -207,10 +208,16 @@ export default class EventSubController extends EventDispatcher {
 			return;
 
 		}else{
-			if(data.type == "live") {
-				Logger.info("📢 The channel "+data.broadcaster_user_name+" went live at "+data.started_at+" with type "+data.type);
-				let uid = data.broadcaster_user_id;
-				this.dispatchEvent(new Event(Event.DISCORD_ALERT_LIVE, uid));
+
+			if(type == "revocation") {
+				Logger.warn("📢 Subscription revoked", JSON.stringify(req.body));
+	
+			}else if(type == "notificaton") {
+				if(data.type == "live") {
+					Logger.info("📢 The channel "+data.broadcaster_user_name+" went live at "+data.started_at+" with type "+data.type);
+					let uid = data.broadcaster_user_id;
+					this.dispatchEvent(new Event(Event.DISCORD_ALERT_LIVE, uid));
+				}
 			}
 		}
 		this.idsParsed[id] = true;
