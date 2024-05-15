@@ -169,7 +169,7 @@ export default class TwitchUtils {
 	 * @param callbackURI 
 	 * @returns 
 	 */
-	public static async eventsubSubscriptionCreate(uid:string, callbackURI:string):Promise<boolean> {
+	public static async eventsubSubscriptionCreate(uid:string, callbackURI:string, version:string = "1"):Promise<boolean> {
 		await this.getClientCredentialToken();//This will refresh the token if necessary
 
 		let opts = {
@@ -181,7 +181,7 @@ export default class TwitchUtils {
 			},
 			body:JSON.stringify({
 				"type": "stream.online",
-				"version": "1",
+				"version": version,
 				"condition": {
 					"broadcaster_user_id": uid
 				},

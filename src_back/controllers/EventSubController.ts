@@ -52,11 +52,11 @@ export default class EventSubController extends EventDispatcher {
 	 */
 	public async subToUser(uid:string):Promise<void> {
 		if(!this.url) {
-			Logger.warn("📢 EventSub is missing a callback URI to be initialized !");
+			Logger.warn("📢 EventSub is missing a callback URI to be set on configs.json !");
 			return;
 		}
 		if(!Config.TWITCH_EVENTSUB_SECRET) {
-			Logger.warn("📢 EventSub is missing a secret passphrase to be initialized !");
+			Logger.warn("📢 EventSub is missing a secret passphrase to be set on configs.json !");
 			return;
 		}
 
@@ -128,7 +128,6 @@ export default class EventSubController extends EventDispatcher {
 		const users:TwitchUser[] = StorageController.getAllValues(StorageController.TWITCH_USERS);
 
 		Logger.info("📢 EventSub sanitizing eventsub subscriptions ("+(users?.length ?? 0)+" users expected, "+(subscriptions?.length ?? 0)+" subscriptions found)...");
-
 		for (let i = 0; i < subscriptions.length; i++) {
 			const s = subscriptions[i];
 			if(s.status != "enabled") {
@@ -145,7 +144,7 @@ export default class EventSubController extends EventDispatcher {
 					await TwitchUtils.eventsubSubscriptionDelete(s.id);
 				}else
 				if(s.transport.callback != this.url) {
-					Logger.warn("📢 EventSub Deleting subscription with invalid clalback URL (URL:"+s.transport.callback+") for user: ", s.condition.broadcaster_user_id);
+					Logger.warn("📢 EventSub Deleting subscription with invalid callback URL (URL:"+s.transport.callback+") for user: ", s.condition.broadcaster_user_id);
 					await TwitchUtils.eventsubSubscriptionDelete(s.id);
 				}else{
 					Logger.info("📢 EventSub Keep existing subscription (type:"+s.type+") for user:", s.condition.broadcaster_user_id, s.transport.callback);
@@ -212,7 +211,7 @@ export default class EventSubController extends EventDispatcher {
 			if(type == "revocation") {
 				Logger.warn("📢 Subscription revoked", JSON.stringify(req.body));
 	
-			}else if(type == "notificaton") {
+			}else if(type == "notification") {
 				if(data.type == "live") {
 					Logger.info("📢 The channel "+data.broadcaster_user_name+" went live at "+data.started_at+" with type "+data.type);
 					let uid = data.broadcaster_user_id;
