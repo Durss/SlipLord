@@ -1,4 +1,3 @@
-import fetch from "node-fetch";
 import Config from "./Config";
 
 /**
@@ -46,7 +45,7 @@ export default class TwitchUtils {
 		};
 		let result = await fetch("https://id.twitch.tv/oauth2/token?client_id="+Config.TWITCH_APP_CLIENT_ID+"&client_secret="+Config.TWITCH_APP_CLIENT_SECRET+"&grant_type=client_credentials&scope=", options)
 		if(result.status == 200) {
-			let json =await result.json()
+			let json:any = await result.json()
 			this._token = json.access_token;
 			this._token_invalidation_date = Date.now() + (json.expires_in - 60000);
 			return json.access_token;
@@ -82,7 +81,7 @@ export default class TwitchUtils {
 					"Content-Type": "application/json",
 				}
 			});
-			const json = await result.json();
+			const json:any = await result.json();
 			users = users.concat(json.data);
 		}
 		return users;
@@ -129,7 +128,7 @@ export default class TwitchUtils {
 			let txt = await result.text();
 			throw(txt);
 		}else{
-			let json = await result.json();
+			let json:any = await result.json();
 			return json.data
 		}
 	}
@@ -153,7 +152,7 @@ export default class TwitchUtils {
 			if(cursor) url.searchParams.append("after", cursor);
 			const res = await fetch(url.href, {headers});
 			if(res.status != 200) return [];//As i managed to corrupt my twitch data, i need this to avoid errors everytime
-			const json:{data:TwitchTypes.EventsubSubscription[], pagination?:{cursor?:string}} = await res.json();
+			const json = await res.json() as {data:TwitchTypes.EventsubSubscription[], pagination?:{cursor?:string}};
 			list = list.concat(json.data);
 			cursor = null;
 			if(json.pagination?.cursor) {

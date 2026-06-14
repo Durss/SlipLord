@@ -1,8 +1,7 @@
-import { SlashCommandBuilder } from "@discordjs/builders";
 import { REST } from "@discordjs/rest";
-import { Routes } from "discord-api-types/v9";
+import { Routes } from "discord-api-types/v10";
 import * as Discord from "discord.js";
-import { RESTPostAPIChatInputApplicationCommandsJSONBody } from "discord.js";
+import { RESTPostAPIChatInputApplicationCommandsJSONBody, SlashCommandBuilder } from "discord.js";
 import { Express } from "express-serve-static-core";
 import Config from "../utils/Config";
 import { Event, EventDispatcher } from "../utils/EventDispatcher";
@@ -24,7 +23,7 @@ export default class DiscordController extends EventDispatcher {
 	private refreshTimeouts:{[key:string]:any} = {};
 
 	private MAX_LIST_ITEMS:number = 25;//maximum items per list allowed by discord
-	private rest = new REST({ version: '9' }).setToken(Config.DISCORDBOT_TOKEN);
+	private rest = new REST({ version: '10' }).setToken(Config.DISCORDBOT_TOKEN);
 	
 	
 	constructor() {
@@ -555,7 +554,7 @@ export default class DiscordController extends EventDispatcher {
 				if(chan) {
 					chan.permissionOverwrites.create(message.member as Discord.GuildMember, {ViewChannel:true});
 				}
-				message.channel.send("Channel Created!");
+				if(message.channel.isSendable()) message.channel.send("Channel Created!");
 				break;
 			}
 			case "test-live": {
@@ -575,7 +574,7 @@ export default class DiscordController extends EventDispatcher {
 				
 				const streamDetails = streamInfos[0];
 				let card = this.buildLiveCard(message.guildId as string, streamDetails, user, true);
-				await message.channel.send({embeds:[card]});
+				if(message.channel.isSendable()) await message.channel.send({embeds:[card]});
 				break;
 			}
 		}
@@ -713,7 +712,7 @@ export default class DiscordController extends EventDispatcher {
 		const row = new Discord.ActionRowBuilder<Discord.StringSelectMenuBuilder>()
 		.addComponents(list);
 
-		await message.channel.send({content:Label.get(lang, "admin.install.intro"), components:[row]});
+		if(message.channel.isSendable()) await message.channel.send({content:Label.get(lang, "admin.install.intro"), components:[row]});
 	}
 
 	/**
@@ -913,7 +912,7 @@ export default class DiscordController extends EventDispatcher {
 	/**
 	 * Start watching for a twitch user to go live
 	 */
-	private async twitchLiveAlertChannel(cmd:Discord.CommandInteraction):Promise<void> {
+	private async twitchLiveAlertChannel(cmd:Discord.ChatInputCommandInteraction):Promise<void> {
 		let watch:boolean = false;
 		let key = "";
 		if(cmd.options.get("watch_login")) {
@@ -1033,7 +1032,7 @@ export default class DiscordController extends EventDispatcher {
 	/**
 	 * Sends the support form on the current channel
 	 */
-	private async sendSupportForm(cmd:Discord.CommandInteraction):Promise<void> {
+	private async sendSupportForm(cmd:Discord.ChatInputCommandInteraction):Promise<void> {
 		await cmd.deferReply();
 		const lang = this.lang(cmd.guildId as string);
 		const support = new Discord.ButtonBuilder({
@@ -1079,7 +1078,7 @@ export default class DiscordController extends EventDispatcher {
 	/**
 	 * Sends the roles selector on the current channel
 	 */
-	private async sendRolesSelector(cmd:Discord.CommandInteraction):Promise<void> {
+	private async sendRolesSelector(cmd:Discord.ChatInputCommandInteraction):Promise<void> {
 		await cmd.deferReply();
 		const lang = this.lang(cmd.guildId as string);
 		let message = Label.get(lang, "roles.intro");
@@ -1139,7 +1138,7 @@ export default class DiscordController extends EventDispatcher {
 	/**
 	 * Creates a poll
 	 */
-	private async createPoll(cmd:Discord.CommandInteraction):Promise<void> {
+	private async createPoll(cmd:Discord.ChatInputCommandInteraction):Promise<void> {
 		await cmd.deferReply();
 		const lang = this.lang(cmd.guildId as string);
 		const options:AnonPollOption[] = [];
@@ -1226,7 +1225,7 @@ export default class DiscordController extends EventDispatcher {
 	 * 
 	 * @param cmd 
 	 */
-	private async setBirthday(cmd:Discord.CommandInteraction):Promise<void> {
+	private async setBirthday(cmd:Discord.ChatInputCommandInteraction):Promise<void> {
 		await cmd.deferReply({ephemeral:true});
 
 		const lang = this.lang(cmd.guildId as string);
@@ -1259,7 +1258,7 @@ export default class DiscordController extends EventDispatcher {
 	 * 
 	 * @param cmd 
 	 */
-	private async saveInactivityParams(cmd:Discord.CommandInteraction):Promise<void> {
+	private async saveInactivityParams(cmd:Discord.ChatInputCommandInteraction):Promise<void> {
 		const lang = this.lang(cmd.guildId as string);
 
 		cmd.deferReply({ephemeral:true});

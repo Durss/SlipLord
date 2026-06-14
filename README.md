@@ -19,8 +19,8 @@ It can be installed on multiple discord servers.
   * [Support system](#support-system)
 * [Project setup and config](#project-setup-and-config) 
 * [Project dev/build](#project-devbuild) 
-  * [Start all for developpement](#start-all-for-developpement)
-  * [Compile all for production](#compile-all-for-production)
+  * [Start for developpement](#start-for-developpement)
+  * [Compile for production](#compile-for-production)
 * [Starting Services](#starting-services) 
 * [Start on boot](#start-on-boot) 
 <br />
@@ -167,17 +167,18 @@ The **TIMEZONE_OFFSET** field is here to make birthdays announcement at midnight
 
 # Project dev/build
 
-## Start all for developpement
+## Start for developpement
 ```
 npm run dev
 ``` 
-Starts front and server with hot reload.\
-Node process has to be started manually. See [Starting services section](#starting-services).
+Compiles the server in watch mode (recompiles on every change).\
+The Node process still has to be started manually. See [Starting services section](#starting-services).
 
-## Compile all for production
+## Compile for production
 ```
 npm run build
 ``` 
+Compiles the TypeScript server to the `server/` folder.
 <br />
 <br />
 <br />

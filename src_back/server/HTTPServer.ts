@@ -1,4 +1,3 @@
-import * as historyApiFallback from 'connect-history-api-fallback';
 import * as express from "express";
 import { Express, NextFunction, Request, Response } from "express-serve-static-core";
 import * as fs from "fs";
@@ -39,23 +38,7 @@ export default class HTTPServer {
 	}
 
 	protected doPrepareApp(): void {
-		//Redirect to homepage invalid requests
-		this.app.use(historyApiFallback({
-			index:"/index.html",
-			// verbose:true,
-			
-			rewrites: [
-				{
-					//Avoiding rewrites for API calls and socket
-					from: /.*\/(api|sock)\/?.*$/,
-					to: (context) => {
-						return context.parsedUrl.pathname as string;
-					}
-				},
-			],
-		}));
-
-		this.app.all("/*", (req:Request, res:Response, next:NextFunction) => {
+		this.app.use((req:Request, res:Response, next:NextFunction) => {
 			// Set CORS headers
 			res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,PATCH,DELETE,OPTIONS');
 			res.header('Access-Control-Allow-Headers', 'Content-type,Accept,X-Access-Token,X-Key,X-AUTH-TOKEN');
@@ -68,8 +51,7 @@ export default class HTTPServer {
 			next();
 		});
 
-		//SERVE PUBLIC FILES
-		this.app.use("/", express.static(Config.PUBLIC_PATH));
+		//SERVE UPLOADED FILES (e.g. twitch offline cards)
 		this.app.use("/uploads", express.static(Config.UPLOAD_PATH));
 
 		this.app.use(express.json());
@@ -80,17 +62,11 @@ export default class HTTPServer {
 			this.errorHandler(error , request, result, next)
 		});
 		
-		let fallback = async (req, res) => {
+		let fallback = async (req:Request, res:Response) => {
 			console.log("NOT FOUND : ",req.url, req.method);
 			res.status(404).send(JSON.stringify({success:false, code:"ENDPOINT_NOT_FOUND", message:"Requested endpoint does not exists"}));
 		};
-		//Fallback endpoints
-		this.app.get("*", fallback);
-		this.app.post("*", fallback);
-		this.app.put("*", fallback);
-		this.app.delete("*", fallback);
-		this.app.patch("*", fallback);
-		this.app.options("*", fallback);
+		this.app.use(fallback);
 	}
 
 	protected errorHandler(error: any, req: Request, res: Response, next: NextFunction): any {

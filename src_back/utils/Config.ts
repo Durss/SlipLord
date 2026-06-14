@@ -44,13 +44,6 @@ export default class Config {
 		});
 	}
 
-	public static get PUBLIC_PATH(): string {
-		return this.getEnvData({
-			dev: "./dist",
-			prod: "./public",
-		});
-	}
-
 	public static get UPLOAD_PATH(): string {
 		return this.getEnvData({
 			dev: "./uploads/",
