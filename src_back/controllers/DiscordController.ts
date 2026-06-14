@@ -365,7 +365,7 @@ export default class DiscordController extends EventDispatcher {
 				}
 
 				case "role_selector":{
-					await interaction.deferReply({ephemeral:true});
+					await interaction.deferReply({flags:Discord.MessageFlags.Ephemeral});
 					const role = interaction.guild?.roles.cache.get(params);
 					const roleName = role?.name ?? "role not found";
 					if(user.roles.cache.has(params)) {
@@ -407,7 +407,7 @@ export default class DiscordController extends EventDispatcher {
 	
 			switch(action) {
 				case "admin/language": {
-					await cmd.deferReply({ephemeral:true});
+					await cmd.deferReply({flags:Discord.MessageFlags.Ephemeral});
 					lang = cmd.options.get("lang")?.value as string;
 					StorageController.setData(cmd.guildId as string, StorageController.LANGUAGE, lang);
 					cmd.editReply(Label.get(lang, "admin.language_updated"));
@@ -415,14 +415,14 @@ export default class DiscordController extends EventDispatcher {
 				}
 				
 				case "admin/birthday_target": {
-					await cmd.deferReply({ephemeral:true});
+					await cmd.deferReply({flags:Discord.MessageFlags.Ephemeral});
 					StorageController.setData(cmd.guildId as string, StorageController.BIRTHDAY_CHANNEL, cmd.channelId);
 					cmd.editReply(Label.get(lang, "admin.birthday_chan_ok"));
 					break;
 				}
 				
 				case "admin/birthday_remove": {
-					await cmd.deferReply({ephemeral:true});
+					await cmd.deferReply({flags:Discord.MessageFlags.Ephemeral});
 
 					const lang = this.lang(cmd.guildId as string);
 					
@@ -444,7 +444,7 @@ export default class DiscordController extends EventDispatcher {
 				}
 				
 				case "admin/leave_notification": {
-					await cmd.deferReply({ephemeral:true});
+					await cmd.deferReply({flags:Discord.MessageFlags.Ephemeral});
 					const chan = cmd.options.get("channel")?.channel;
 					const disable = cmd.options.get("disable")?.value as boolean;
 					if(disable) {
@@ -462,7 +462,7 @@ export default class DiscordController extends EventDispatcher {
 				}
 	
 				case "support/target": {
-					await cmd.deferReply({ephemeral:true});
+					await cmd.deferReply({flags:Discord.MessageFlags.Ephemeral});
 					const chan = cmd.options.get("category")?.channel;
 					if(chan?.type == Discord.ChannelType.GuildCategory) {
 						StorageController.setData(cmd.guildId as string, StorageController.SUPPORT_TARGET, chan.id);
@@ -930,12 +930,12 @@ export default class DiscordController extends EventDispatcher {
 			const users:TwitchUser[] = StorageController.getData(cmd.guildId as string, StorageController.TWITCH_USERS);
 			const userNames = users.map(v=>"\n ⚈ **" + v.login + "** => <#" + v.channel + ">");
 			const message = Label.get(lang, "twitch.user_list") + userNames;
-			cmd.reply({content:message, ephemeral:true});
+			cmd.reply({content:message, flags:Discord.MessageFlags.Ephemeral});
 			return;
 		}
 
 		if(!Config.IS_TWITCH_CONFIGURED) {
-			cmd.reply({content:Label.get(lang, "twitch.not_configured"), ephemeral:true});
+			cmd.reply({content:Label.get(lang, "twitch.not_configured"), flags:Discord.MessageFlags.Ephemeral});
 			return;
 		}
 		const user = cmd.options.get(key)?.value as string;
@@ -954,14 +954,14 @@ export default class DiscordController extends EventDispatcher {
 			}
 			StorageController.setData(cmd.guildId as string, StorageController.TWITCH_USERS, list);
 			if(watch) {
-				cmd.reply({content:Label.get(lang, "twitch.user_added", [{id:"user", value:user.display_name}]), ephemeral:true});
+				cmd.reply({content:Label.get(lang, "twitch.user_added", [{id:"user", value:user.display_name}]), flags:Discord.MessageFlags.Ephemeral});
 				this.dispatchEvent(new Event(Event.SUB_TO_LIVE_EVENT, user.id));
 			}else{
-				cmd.reply({content:Label.get(lang, "twitch.user_removed", [{id:"user", value:user.display_name}]), ephemeral:true});
+				cmd.reply({content:Label.get(lang, "twitch.user_removed", [{id:"user", value:user.display_name}]), flags:Discord.MessageFlags.Ephemeral});
 				this.dispatchEvent(new Event(Event.UNSUB_FROM_LIVE_EVENT, user.id));
 			}
 		}else{
-			cmd.reply({content:Label.get(lang, "twitch.user_notFound", [{id:"user", value:user}]), ephemeral:true});
+			cmd.reply({content:Label.get(lang, "twitch.user_notFound", [{id:"user", value:user}]), flags:Discord.MessageFlags.Ephemeral});
 		}
 	}
 
@@ -1055,7 +1055,7 @@ export default class DiscordController extends EventDispatcher {
 	 * Create a support channel
 	 */
 	private async createSupport(interaction:Discord.ButtonInteraction):Promise<void> {
-		interaction.deferReply({ephemeral:true});
+		interaction.deferReply({flags:Discord.MessageFlags.Ephemeral});
 		const lang = this.lang(interaction.guildId as string);
 		const chanTarget = StorageController.getData(interaction.guildId as string, StorageController.SUPPORT_TARGET) as string;
 		const chanName = Label.get(lang, "support.channel_name", [{id:"user", value:interaction.member?.user.username as string}]);
@@ -1226,7 +1226,7 @@ export default class DiscordController extends EventDispatcher {
 	 * @param cmd 
 	 */
 	private async setBirthday(cmd:Discord.ChatInputCommandInteraction):Promise<void> {
-		await cmd.deferReply({ephemeral:true});
+		await cmd.deferReply({flags:Discord.MessageFlags.Ephemeral});
 
 		const lang = this.lang(cmd.guildId as string);
 		
@@ -1261,7 +1261,7 @@ export default class DiscordController extends EventDispatcher {
 	private async saveInactivityParams(cmd:Discord.ChatInputCommandInteraction):Promise<void> {
 		const lang = this.lang(cmd.guildId as string);
 
-		cmd.deferReply({ephemeral:true});
+		cmd.deferReply({flags:Discord.MessageFlags.Ephemeral});
 		if(cmd.options.get("disable")?.value === true) {
 			StorageController.delData(cmd.guildId as string, StorageController.INACTIVITY_CONFIGS);
 			cmd.editReply(Label.get(lang, "commands.admin.inactivity.disable_ok"));
