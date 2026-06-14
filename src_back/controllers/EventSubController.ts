@@ -179,10 +179,10 @@ export default class EventSubController extends EventDispatcher {
 		let type = <string>req.headers["twitch-eventsub-message-type"];
 		let data = req.body.event;
 
-		//Filter out IDs already parsed
+		//Filter out IDs already parsed.
 		if(this.idsParsed[id] === true) {
 			// console.log("Ignore", id);
-			res.status(200);
+			res.sendStatus(200);
 			return;
 		}
 
@@ -209,8 +209,24 @@ export default class EventSubController extends EventDispatcher {
 		}else{
 
 			if(type == "revocation") {
-				Logger.warn("📢 Subscription revoked", JSON.stringify(req.body));
-	
+				const sub = json.subscription;
+				const uid = sub?.condition?.broadcaster_user_id;
+				const reason = sub?.status;
+				Logger.warn("📢 EventSub subscription revoked (reason:"+reason+", type:"+sub?.type+") for user:", uid);
+
+				//Recreate the subscription on the fly if necessary
+				if(uid && reason != "user_removed") {
+					const users:TwitchUser[] = StorageController.getAllValues(StorageController.TWITCH_USERS);
+					if(users.findIndex(v => v.uid == uid) > -1) {
+						//Cleanup the now-dead subscription before recreating a fresh one
+						if(sub?.id) await TwitchUtils.eventsubSubscriptionDelete(sub.id);
+						Logger.info("📢 EventSub recreating revoked subscription for user:", uid);
+						await this.subToUser(uid);
+					}else{
+						Logger.info("📢 EventSub skip recreating revoked subscription, user is no longer tracked:", uid);
+					}
+				}
+
 			}else if(type == "notification") {
 				if(data.type == "live") {
 					Logger.info("📢 The channel "+data.broadcaster_user_name+" went live at "+data.started_at+" with type "+data.type);
@@ -235,47 +251,44 @@ export default class EventSubController extends EventDispatcher {
 }
 
 export interface EventSubMessage {
-	subscription: EventSubMessageSubType.Subscription;
-	event: EventSubMessageSubType.Event;
+  subscription: Subscription;
+  event: SubscriptionEvent;
 }
 
-export declare module EventSubMessageSubType {
+export interface Condition {
+  broadcaster_user_id: string;
+}
 
-    export interface Condition {
-        broadcaster_user_id: string;
-    }
+export interface Transport {
+  method: string;
+  callback: string;
+}
 
-    export interface Transport {
-        method: string;
-        callback: string;
-    }
+export interface Subscription {
+  id: string;
+  status: string;
+  type: string;
+  version: string;
+  cost: number;
+  condition: Condition;
+  transport: Transport;
+  created_at: Date;
+}
 
-    export interface Subscription {
-        id: string;
-        status: string;
-        type: string;
-        version: string;
-        cost: number;
-        condition: Condition;
-        transport: Transport;
-        created_at: Date;
-    }
-
-    export interface Event {
-        user_id: string;
-        user_login: string;
-        user_name: string;
-        broadcaster_user_id: string;
-        broadcaster_user_login: string;
-        broadcaster_user_name: string;
-		user_input: string;
-		status: string;
-		redeemed_at: string;
-		reward: {
-			id: string;
-			title: string;
-			prompt: string;
-			cost: number;
-		};
-	}
+export interface SubscriptionEvent {
+  user_id: string;
+  user_login: string;
+  user_name: string;
+  broadcaster_user_id: string;
+  broadcaster_user_login: string;
+  broadcaster_user_name: string;
+  user_input: string;
+  status: string;
+  redeemed_at: string;
+  reward: {
+    id: string;
+    title: string;
+    prompt: string;
+    cost: number;
+  };
 }
