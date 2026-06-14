@@ -1,0 +1,14 @@
+{
+	"SERVER_PORT": 3023,
+	"BOT_NAME": "my_bot",
+	"CMD_PREFIX": "",
+	"TIMEZONE_OFFSET": 2,
+	"PUBLIC_SECURED_URL": "https://your-public-host.example/",
+	"TWITCH_EVENTSUB_SECRET": "",
+	"TWITCH_APP_CLIENT_ID": "",
+	"TWITCH_APP_CLIENT_SECRET": "",
+	"TWITCH_APP_SCOPES": "",
+	"DISCORDBOT_CLIENT_ID": "",
+	"DISCORDBOT_TOKEN": "",
+	"DISCORDBOT_REACTION_EMOJIS": "🇧 🇨 🇩 🇪 🇫 🇬 🇭 🇮 🇯 🇰 🇱 🇲 🇳 🇴 🇵 🇶 🇷 🇸 🇹 🇺 🇻 🇼 🇽 🇾 🇿 0⃣ 1⃣ 2⃣ 3⃣ 4⃣ 5⃣ 6⃣ 7⃣ 8⃣ 9⃣ 🇦 ❤️ 🧡 💛 💚 💙 💜 🤎 🟥 🟧 🟨 🟩 🟦 🟪 🟫 🔴 🟠 🟡 🟢 🔵 🟣 🟤"
+}

@@ -1,0 +1,20 @@
+services:
+  sliplord:
+    build:
+      context: .
+    image: sliplord
+    container_name: sliplord
+    restart: unless-stopped
+    # Left side = host port, right side must match SERVER_PORT in configs.json
+    ports:
+      - "3023:3023"
+    volumes:
+      # Secrets & settings (Twitch/Discord tokens, port, prefix, …).
+      # Copy configs-sample.json to configs.json and fill it in before starting.
+      - ./configs.json:/app/configs.json:ro
+      # Persistent per-guild storage + uploaded cards, bind-mounted to the real
+      # host folder (e.g. /opt/sliplord/uploads) so its content lives on the
+      # filesystem and is directly readable/writable outside Docker.
+      - ./uploads:/app/uploads
+      # Optional: edit translations without rebuilding the image.
+      # - ./labels.json:/app/labels.json:ro
