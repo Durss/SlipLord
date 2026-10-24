@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
-# Node 18+ is required by discord.js / express; 22 LTS is used here.
-ARG NODE_VERSION=22-alpine
+# Node 18+ is required by discord.js / express; the current LTS is used here.
+ARG NODE_VERSION=lts-alpine
 
 # ---------------------------------------------------------------------------
 # 1. Compile the TypeScript sources (src_back -> server)
